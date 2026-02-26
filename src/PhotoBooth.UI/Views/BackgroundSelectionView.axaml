@@ -1,0 +1,128 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoBooth.UI.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:converters="using:PhotoBooth.UI.Converters"
+             mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
+             x:Class="PhotoBooth.UI.Views.BackgroundSelectionView"
+             x:DataType="vm:BackgroundSelectionViewModel">
+
+    <UserControl.Styles>
+        <!-- Image Button Style -->
+        <Style Selector="Button.ImageBtn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Background="{TemplateBinding Background}"
+                                      BorderBrush="{TemplateBinding BorderBrush}"
+                                      BorderThickness="{TemplateBinding BorderThickness}"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Padding="{TemplateBinding Padding}"
+                                      CornerRadius="{TemplateBinding CornerRadius}"/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        
+        <!-- Pressed State -->
+        <Style Selector="Button.ImageBtn:pressed > Image">
+             <Setter Property="RenderTransform" Value="scale(0.92)"/>
+        </Style>
+        <Style Selector="Button.ImageBtn:pressed /template/ ContentPresenter">
+             <Setter Property="RenderTransform" Value="scale(0.92)"/>
+             <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        
+        <!-- PointerOverlay State -->
+        <Style Selector="Button.ImageBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        
+        <!-- Focus State -->
+        <Style Selector="Button.ImageBtn:focus /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <!-- Background Image (Dynamic based on logic or static for now, reusing back2 per request to look like Layout screen) -->
+        <Image Source="/Assets/backgrounds/back3.png" 
+               Stretch="UniformToFill"/>
+        
+        <!-- Content Scaler: Ensures UI looks the same on all screens -->
+        <Viewbox Stretch="Uniform">
+            <!-- Reference Design Size: 1920x1080 -->
+            <Grid Width="1920" Height="1080">
+                
+                <!-- Frame Selection Cards - Center -->
+                <StackPanel Orientation="Horizontal" 
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Margin="{Binding ContainerMargin}"
+                            Spacing="{Binding ContainerSpacing}">
+                    
+                    <!-- Option 1 Button -->
+                    <Button Command="{Binding SelectOption1Command}"
+                            Classes="ImageBtn"
+                            Cursor="Hand"
+                            RenderTransformOrigin="0.5,0.5">
+                        <!-- Note: Bg1 is private, we might need a public property if we want scale effect. 
+                                           For now, let's skip the complex scale converter binding or assume it works 
+                                           if we expose IDs properly. 
+                                           Actually, let's keep it simple: Just standard buttons first. -->
+                        
+                        <Panel>
+                             <Border Background="Transparent">
+                                 <Image Source="{Binding Option1Image}" Height="550" Stretch="Uniform"/>
+                             </Border>
+                             <TextBlock Text="{Binding Option1Name}" Foreground="Black" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="200,0,0,-30"/>
+                        </Panel>
+                    </Button>
+                    
+                    <!-- Option 2 Button -->
+                    <Button Command="{Binding SelectOption2Command}"
+                            Classes="ImageBtn"
+                            Cursor="Hand"
+                            RenderTransformOrigin="0.5,0.5">
+                        <Panel>
+                            <Border Background="Transparent">
+                                <Image Source="{Binding Option2Image}" Height="550" Stretch="Uniform"/>
+                            </Border>
+                            <TextBlock Text="{Binding Option2Name}" Foreground="Black" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,-30"/>
+                        </Panel>
+                    </Button>
+
+                </StackPanel>
+                
+                <!-- Back Button -->
+                <Button Command="{Binding GoBackCommand}"
+                        Classes="ImageBtn"
+                        Width="200"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        Margin="60,0,0,0"
+                        Cursor="Hand">
+                    <Image Source="/Assets/buttons/back.png"/>
+                </Button>
+                
+                <!-- Next Button -->
+                <Button Command="{Binding GoNextCommand}"
+                        Classes="ImageBtn"
+                        Width="200"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Margin="0,0,60,0"
+                        Cursor="Hand">
+                    <Image Source="/Assets/buttons/next.png"/>
+                </Button>
+            </Grid>
+        </Viewbox>
+    </Grid>
+
+</UserControl>

@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoBooth.UI.ViewModels"
+             xmlns:views="using:PhotoBooth.UI.Views"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
+             x:Class="PhotoBooth.UI.Views.PrintingView"
+             x:DataType="vm:PrintingViewModel">
+
+    <UserControl.Resources>
+        <views:ProgressToWidthConverter x:Key="ProgressToWidthConverter" MaxWidth="600"/>
+    </UserControl.Resources>
+
+    <Grid Background="#1a1a2e">
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="40">
+            
+            <TextBlock Text="🖨️" 
+                       FontSize="100" 
+                       HorizontalAlignment="Center"/>
+            
+            <TextBlock Text="ĐANG IN ẢNH..." 
+                       FontSize="42" 
+                       FontWeight="Bold" 
+                       Foreground="#e94560"
+                       HorizontalAlignment="Center"/>
+            
+            <TextBlock Text="{Binding StatusMessage}" 
+                       FontSize="24" 
+                       Foreground="White"
+                       HorizontalAlignment="Center"/>
+            
+            <!-- Progress Bar -->
+            <Border Background="#16213e" 
+                    Width="600" Height="30" 
+                    CornerRadius="15">
+                <Border Background="#e94560"
+                        HorizontalAlignment="Left"
+                        CornerRadius="15"
+                        Width="{Binding Progress, Converter={StaticResource ProgressToWidthConverter}}"/>
+            </Border>
+            
+            <TextBlock Text="{Binding Progress, StringFormat={}{0}%}" 
+                       FontSize="36" 
+                       FontWeight="Bold"
+                       Foreground="White"
+                       HorizontalAlignment="Center"/>
+            
+        </StackPanel>
+    </Grid>
+
+</UserControl>

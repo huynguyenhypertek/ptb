@@ -1,0 +1,92 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoBooth.UI.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
+             x:Class="PhotoBooth.UI.Views.StartView"
+             x:DataType="vm:StartViewModel">
+
+    <UserControl.Styles>
+
+        <Style Selector="Button.ImageBtn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Background="{TemplateBinding Background}"
+                                      BorderBrush="{TemplateBinding BorderBrush}"
+                                      BorderThickness="{TemplateBinding BorderThickness}"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Padding="{TemplateBinding Padding}"
+                                      CornerRadius="{TemplateBinding CornerRadius}"/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        
+        <Style Selector="Button.ImageBtn:pressed > Image">
+             <Setter Property="RenderTransform" Value="scale(0.92)"/>
+        </Style>
+        <Style Selector="Button.ImageBtn:pressed /template/ ContentPresenter">
+             <Setter Property="RenderTransform" Value="scale(0.92)"/>
+             <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        
+        <Style Selector="Button.ImageBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        
+        <Style Selector="Button.ImageBtn:focus /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <!-- Background Image (Always Fills Screen) -->
+        <Image Source="/Assets/backgrounds/back1.png" 
+               Stretch="UniformToFill"/>
+        
+        <!-- Content Scaler -->
+        <Viewbox Stretch="Uniform">
+            <Grid Width="1920" Height="1080">
+                <!-- Next Button -->
+                <Button Command="{Binding StartCommand}"
+                        Classes="ImageBtn"
+                        Width="350"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Margin="800,250,0,0"
+                        Cursor="Hand"
+                        RenderTransformOrigin="0.5,0.5">
+                    <Image Source="/Assets/buttons/next.png"/>
+                </Button>
+            </Grid>
+        </Viewbox>
+
+        <!-- Device Locked Overlay -->
+        <Border IsVisible="{Binding IsDeviceLocked}"
+                Background="#DD000000"
+                ZIndex="100">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
+                <TextBlock Text="🔒" FontSize="120" HorizontalAlignment="Center"/>
+                <TextBlock Text="THIẾT BỊ ĐÃ BỊ KHÓA" 
+                           FontSize="48" FontWeight="Bold" Foreground="#e94560"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Text="Liên hệ Admin để kích hoạt lại" 
+                           FontSize="24" Foreground="#aaa"
+                           HorizontalAlignment="Center"/>
+                <Button Content="🔄 Thử lại" Command="{Binding RetryCheckCommand}"
+                        Background="#7c3aed" Foreground="White" 
+                        FontSize="22" FontWeight="Bold"
+                        Padding="30,12" CornerRadius="12"
+                        HorizontalAlignment="Center" Margin="0,20,0,0"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+
+</UserControl>

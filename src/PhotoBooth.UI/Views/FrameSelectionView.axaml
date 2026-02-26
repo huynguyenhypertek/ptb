@@ -1,0 +1,63 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoBooth.UI.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:converters="using:PhotoBooth.UI.Converters"
+             mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
+             x:Class="PhotoBooth.UI.Views.FrameSelectionView"
+             x:DataType="vm:FrameSelectionViewModel">
+
+    <UserControl.Styles>
+        <!-- Image Button Style -->
+        <Style Selector="Button.ImageBtn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Background="{TemplateBinding Background}"
+                                      BorderBrush="{TemplateBinding BorderBrush}"
+                                      BorderThickness="{TemplateBinding BorderThickness}"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Padding="{TemplateBinding Padding}"
+                                      CornerRadius="{TemplateBinding CornerRadius}"/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        
+        <!-- Pressed State -->
+        <Style Selector="Button.ImageBtn:pressed > Image">
+             <Setter Property="RenderTransform" Value="scale(0.92)"/>
+        </Style>
+        <Style Selector="Button.ImageBtn:pressed /template/ ContentPresenter">
+             <Setter Property="RenderTransform" Value="scale(0.92)"/>
+             <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        
+        <!-- Focus/PointerOver State -->
+        <Style Selector="Button.ImageBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.ImageBtn:focus /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <!-- Background Image -->
+        <Image Source="/Assets/backgrounds/back2.png" 
+               Stretch="UniformToFill"/>
+        
+        <Viewbox Stretch="Uniform">
+            <Grid Width="1920" Height="1080">
+                <!-- Elements removed as requested -->
+            </Grid>
+        </Viewbox>
+    </Grid>
+
+</UserControl>

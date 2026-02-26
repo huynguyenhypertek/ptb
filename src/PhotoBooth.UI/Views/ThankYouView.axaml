@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoBooth.UI.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
+             x:Class="PhotoBooth.UI.Views.ThankYouView"
+             x:DataType="vm:ThankYouViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Button.ImageBtn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Background="{TemplateBinding Background}"
+                                      BorderBrush="{TemplateBinding BorderBrush}"
+                                      BorderThickness="{TemplateBinding BorderThickness}"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Padding="{TemplateBinding Padding}"
+                                      CornerRadius="{TemplateBinding CornerRadius}"/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Button.ImageBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.ImageBtn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <!-- Background -->
+        <Image Source="{Binding BackgroundImage}" 
+               Stretch="UniformToFill"/>
+
+        <!-- Content Scaler -->
+        <Viewbox Stretch="Uniform">
+            <Grid Width="1920" Height="1080">
+
+                <!-- State 1: QR Code Screen (nen10.5) -->
+                <Grid IsVisible="{Binding ShowQRScreen}">
+                    <!-- QR Code Image -->
+                    <Border Background="White" 
+                            Width="300" Height="300" 
+                            CornerRadius="16"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Margin="0,0,0,50">
+                        <Image Source="{Binding QrCodeImage}" 
+                               Width="280" Height="280"
+                               Stretch="Uniform"/>
+                    </Border>
+                    
+                    <!-- Status text -->
+                    <TextBlock Text="{Binding StatusText}" 
+                               FontSize="24" FontWeight="Bold"
+                               Foreground="White"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Margin="0,350,0,0"/>
+
+                    <!-- Next button -->
+                    <Button Command="{Binding GoToThankYouCommand}"
+                            Classes="ImageBtn"
+                            Width="200"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Bottom"
+                            Margin="0,0,100,80"
+                            Cursor="Hand">
+                        <Image Source="/Assets/buttons/next.png"/>
+                    </Button>
+                </Grid>
+
+                <!-- State 2: Thank You (nen11) — MHchinh button at bottom-right -->
+                <Button Command="{Binding ShowConfirmReturnCommand}"
+                        Classes="ImageBtn"
+                        Width="200"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,100,100"
+                        Cursor="Hand"
+                        IsVisible="{Binding ShowThankYou}">
+                    <Image Source="/Assets/buttons/MHchinh.png"/>
+                </Button>
+
+                <!-- State 3: Confirmation (nen11 xac nhan) — MHchinh button at center -->
+                <Button Command="{Binding ReturnToStartCommand}"
+                        Classes="ImageBtn"
+                        Width="250"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Margin="0,200,0,0"
+                        Cursor="Hand"
+                        IsVisible="{Binding ShowConfirmation}">
+                    <Image Source="/Assets/buttons/MHchinh.png"/>
+                </Button>
+
+            </Grid>
+        </Viewbox>
+    </Grid>
+
+</UserControl>

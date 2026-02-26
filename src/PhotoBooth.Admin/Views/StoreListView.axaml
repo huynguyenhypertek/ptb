@@ -1,0 +1,110 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoBooth.Admin.ViewModels"
+             x:Class="PhotoBooth.Admin.Views.StoreListView"
+             x:DataType="vm:StoreListViewModel">
+    
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="20">
+        <!-- Header -->
+        <Grid Margin="0,0,0,15">
+            <TextBlock Text="🏪 Quản lý cửa hàng" FontSize="28" FontWeight="Bold" Foreground="White"/>
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8">
+                <Button Content="➕ Thêm cửa hàng" Command="{Binding ShowCreateFormCommand}"
+                        Background="#7c3aed" Foreground="White" CornerRadius="8" Padding="12,8"/>
+                <Button Content="✏️ Sửa" Command="{Binding EditStoreCommand}"
+                        Background="#f59e0b" Foreground="White" CornerRadius="8" Padding="12,8"/>
+                <Button Content="🔄 Làm mới" Command="{Binding LoadStoresCommand}"
+                        Background="#2a2a3e" Foreground="White" CornerRadius="8" Padding="12,8"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Status -->
+        <TextBlock Grid.Row="1" Text="{Binding StatusMessage}" Foreground="#f0c040" FontSize="14"
+                   Margin="0,0,0,10"
+                   IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+        <!-- Create/Edit Form -->
+        <Border Grid.Row="2" Background="#2a2a3e" CornerRadius="12" Padding="20" Margin="0,0,0,15"
+                IsVisible="{Binding ShowForm}">
+            <StackPanel Spacing="12">
+                <TextBlock FontSize="18" FontWeight="Bold" Foreground="White">
+                    <TextBlock.Text>
+                        <Binding Path="IsEditing" StringFormat="{}">
+                            <Binding.FallbackValue>Thêm cửa hàng mới</Binding.FallbackValue>
+                        </Binding>
+                    </TextBlock.Text>
+                </TextBlock>
+                
+                <!-- Store info row -->
+                <TextBlock Text="📍 Thông tin cửa hàng" Foreground="#aaa" FontSize="13"/>
+                <Grid ColumnDefinitions="*,*,Auto" HorizontalAlignment="Stretch">
+                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                        <TextBlock Text="Tên cửa hàng" Foreground="#ccc" FontSize="12" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding FormName}" Watermark="VD: Cua hang 2"
+                                 Padding="10,8" CornerRadius="6"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                        <TextBlock Text="Địa chỉ" Foreground="#ccc" FontSize="12" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding FormAddress}" Watermark="VD: 123 Duong ABC"
+                                 Padding="10,8" CornerRadius="6"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Gói dịch vụ" Foreground="#ccc" FontSize="12" Margin="0,0,0,4"/>
+                        <ComboBox SelectedIndex="{Binding FormPlanIndex}" Padding="10,6" CornerRadius="6" Width="130">
+                            <ComboBoxItem Content="Basic"/>
+                            <ComboBoxItem Content="Pro"/>
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Admin account row (only for create mode) -->
+                <StackPanel IsVisible="{Binding !IsEditing}" Spacing="8">
+                    <TextBlock Text="👤 Tài khoản Admin cửa hàng" Foreground="#aaa" FontSize="13" Margin="0,5,0,0"/>
+                    <Grid ColumnDefinitions="*,*" HorizontalAlignment="Stretch">
+                        <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                            <TextBlock Text="Username" Foreground="#ccc" FontSize="12" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding FormAdminUsername}" Watermark="VD: adminCH2"
+                                     Padding="10,8" CornerRadius="6"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="Mật khẩu" Foreground="#ccc" FontSize="12" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding FormAdminPassword}" Watermark="VD: admin123"
+                                     Padding="10,8" CornerRadius="6"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+                
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,5,0,0">
+                    <Button Content="💾 Lưu" Command="{Binding SaveStoreCommand}"
+                            Background="#22c55e" Foreground="White" CornerRadius="6" Padding="16,8"/>
+                    <Button Content="Hủy" Command="{Binding CancelFormCommand}"
+                            Background="#555" Foreground="White" CornerRadius="6" Padding="16,8"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Stores Table -->
+        <Border Grid.Row="3" Background="#1e1e2e" CornerRadius="12" Padding="5">
+            <DataGrid ItemsSource="{Binding Stores}" 
+                      SelectedItem="{Binding SelectedStore}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserResizeColumns="True"
+                      GridLinesVisibility="Horizontal"
+                      BorderThickness="0"
+                      SelectionMode="Single">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="60"/>
+                    <DataGridTextColumn Header="Tên cửa hàng" Binding="{Binding Name}" Width="200"/>
+                    <DataGridTextColumn Header="Địa chỉ" Binding="{Binding Address}" Width="*"/>
+                    <DataGridTextColumn Header="Gói" Binding="{Binding PlanType}" Width="80"/>
+                    <DataGridTextColumn Header="Ngày tạo" Binding="{Binding CreatedAt, StringFormat='{}{0:dd/MM/yyyy}'}" Width="120"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <TextBlock Grid.Row="3" Text="Đang tải..." Foreground="#888" FontSize="14"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   IsVisible="{Binding IsLoading}"/>
+    </Grid>
+</UserControl>

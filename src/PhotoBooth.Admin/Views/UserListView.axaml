@@ -1,0 +1,221 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoBooth.Admin.ViewModels"
+             xmlns:conv="using:PhotoBooth.Admin.Converters"
+             x:Class="PhotoBooth.Admin.Views.UserListView"
+             x:DataType="vm:UserListViewModel">
+    <UserControl.Resources>
+        <conv:BoolToColorConverter x:Key="BoolToColorConverter"/>
+        <conv:BoolToStatusConverter x:Key="BoolToStatusConverter"/>
+        <conv:BoolToToggleTextConverter x:Key="BoolToToggleTextConverter"/>
+    </UserControl.Resources>
+    
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="20">
+        <!-- Header -->
+        <Grid Margin="0,0,0,15">
+            <TextBlock Text="👥 Quản lý tài khoản" FontSize="28" FontWeight="Bold" Foreground="White"/>
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8">
+                <Button Content="➕ Tạo mới" Command="{Binding ShowCreateFormCommand}"
+                        Background="#7c3aed" Foreground="White" CornerRadius="8" Padding="12,8"/>
+                <Button Content="🔄 Làm mới" Command="{Binding LoadUsersCommand}"
+                        Background="#2a2a3e" Foreground="White" CornerRadius="8" Padding="12,8"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Status Message -->
+        <TextBlock Grid.Row="1" Text="{Binding StatusMessage}" Foreground="#f0c040" FontSize="14"
+                   Margin="0,0,0,10"
+                   IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+        <!-- Create/Edit Form -->
+        <Border Grid.Row="2" Background="#2a2a3e" CornerRadius="12" Padding="20" Margin="0,0,0,15"
+                IsVisible="{Binding ShowForm}">
+            <StackPanel Spacing="10">
+                <TextBlock Text="Tạo / Sửa tài khoản Device" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                
+                <Grid ColumnDefinitions="*,*,*" HorizontalAlignment="Stretch">
+                    <!-- Username -->
+                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                        <TextBlock Text="Username" Foreground="#ccc" FontSize="12" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding FormUsername}" Watermark="Nhập username"
+                                 Padding="10,8" CornerRadius="6"
+                                 IsEnabled="{Binding !IsEditing}"/>
+                    </StackPanel>
+                    
+                    <!-- Password -->
+                    <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                        <TextBlock Text="Mật khẩu" Foreground="#ccc" FontSize="12" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding FormPassword}" 
+                                 Watermark="Nhập mật khẩu"
+                                 Padding="10,8" CornerRadius="6"/>
+                    </StackPanel>
+                    
+                    <!-- Store (SystemAdmin: dropdown, StoreAdmin: hidden/auto) -->
+                    <StackPanel Grid.Column="2" IsVisible="{Binding IsSystemAdmin}">
+                        <TextBlock Text="Cửa hàng" Foreground="#ccc" FontSize="12" Margin="0,0,0,4"/>
+                        <ComboBox ItemsSource="{Binding Stores}" SelectedIndex="{Binding FormStoreIndex}"
+                                  HorizontalAlignment="Stretch" Padding="10,8" CornerRadius="6">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
+                
+                <!-- Buttons -->
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,5,0,0">
+                    <Button Content="💾 Lưu" Command="{Binding SaveUserCommand}"
+                            Background="#22c55e" Foreground="White" CornerRadius="6" Padding="16,8"/>
+                    <Button Content="Hủy" Command="{Binding CancelFormCommand}"
+                            Background="#555" Foreground="White" CornerRadius="6" Padding="16,8"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- SystemAdmin: Hierarchical Store Groups -->
+        <ScrollViewer Grid.Row="3" IsVisible="{Binding IsSystemAdmin}">
+            <ItemsControl ItemsSource="{Binding StoreGroups}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:StoreGroup}">
+                        <Border Background="#1e1e2e" CornerRadius="12" Margin="0,0,0,10" Padding="0">
+                            <StackPanel>
+                                <!-- Store Header (clickable to expand) -->
+                                <Border Background="#252540" CornerRadius="12,12,0,0" Padding="16,12">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                                <TextBlock Text="{Binding DisplayName}" FontSize="18" 
+                                                           FontWeight="Bold" Foreground="White"/>
+                                                <Border Background="#7c3aed" CornerRadius="10" Padding="8,3">
+                                                    <TextBlock Text="{Binding DeviceCount}" Foreground="White" FontSize="11"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding AdminName}" Foreground="#aaa" FontSize="13" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                        <ToggleButton Grid.Column="1" IsChecked="{Binding IsExpanded}"
+                                                      Content="▼" FontSize="14"
+                                                      Background="Transparent" Foreground="#888"
+                                                      BorderThickness="0" Padding="8,4"/>
+                                    </Grid>
+                                </Border>
+                                
+                                <!-- Store Admin row -->
+                                <Border IsVisible="{Binding IsExpanded}" Padding="16,8" Background="#1a1a30">
+                                    <Grid ColumnDefinitions="30,*,Auto" IsVisible="{Binding StoreAdmin, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                        <TextBlock Text="👤" FontSize="16" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding StoreAdmin.Username}" Foreground="White" 
+                                                       FontWeight="SemiBold" FontSize="14"/>
+                                            <TextBlock Text="StoreAdmin" Foreground="#7c3aed" FontSize="11"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5">
+                                            <Button Content="✏️" Command="{Binding $parent[ItemsControl].((vm:UserListViewModel)DataContext).EditUserCommand}"
+                                                    CommandParameter="{Binding StoreAdmin}"
+                                                    Background="#f59e0b" Foreground="White" CornerRadius="4" Padding="6,3" FontSize="11"/>
+                                            <Button Content="🗑️" Command="{Binding $parent[ItemsControl].((vm:UserListViewModel)DataContext).DeleteUserCommand}"
+                                                    CommandParameter="{Binding StoreAdmin}"
+                                                    Background="#e94560" Foreground="White" CornerRadius="4" Padding="6,3" FontSize="11"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Devices list -->
+                                <ItemsControl IsVisible="{Binding IsExpanded}" ItemsSource="{Binding Devices}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Padding="16,6" BorderBrush="#2a2a3e" BorderThickness="0,1,0,0">
+                                                <Grid ColumnDefinitions="30,30,*,Auto,Auto">
+                                                    <TextBlock Text="" Grid.Column="0"/>
+                                                    <TextBlock Text="📷" Grid.Column="1" FontSize="14" VerticalAlignment="Center"/>
+                                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <TextBlock Text="{Binding Username}" Foreground="#ccc" FontSize="13"/>
+                                                            <Border CornerRadius="8" Padding="6,2"
+                                                                    Background="{Binding IsEnabled, Converter={StaticResource BoolToColorConverter}}">
+                                                                <TextBlock Text="{Binding IsEnabled, Converter={StaticResource BoolToStatusConverter}}"
+                                                                           Foreground="White" FontSize="10"/>
+                                                            </Border>
+                                                        </StackPanel>
+                                                        <TextBlock Text="Device" Foreground="#22c55e" FontSize="11"/>
+                                                    </StackPanel>
+                                                    <Button Grid.Column="3" 
+                                                            Content="{Binding IsEnabled, Converter={StaticResource BoolToToggleTextConverter}}"
+                                                            Command="{Binding $parent[ItemsControl;1].((vm:UserListViewModel)DataContext).ToggleUserEnabledCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            Background="#334155" Foreground="White" CornerRadius="4" Padding="8,3" FontSize="11"
+                                                            Margin="0,0,5,0"/>
+                                                    <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="5">
+                                                        <Button Content="✏️" 
+                                                                Command="{Binding $parent[ItemsControl;1].((vm:UserListViewModel)DataContext).EditUserCommand}"
+                                                                CommandParameter="{Binding}"
+                                                                Background="#f59e0b" Foreground="White" CornerRadius="4" Padding="6,3" FontSize="11"/>
+                                                        <Button Content="🗑️" 
+                                                                Command="{Binding $parent[ItemsControl;1].((vm:UserListViewModel)DataContext).DeleteUserCommand}"
+                                                                CommandParameter="{Binding}"
+                                                                Background="#e94560" Foreground="White" CornerRadius="4" Padding="6,3" FontSize="11"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- StoreAdmin: Device list with toggle -->
+        <Border Grid.Row="3" Background="#1e1e2e" CornerRadius="12" Padding="15"
+                IsVisible="{Binding IsStoreAdmin}">
+            <ScrollViewer>
+                <ItemsControl ItemsSource="{Binding Users}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Padding="12,8" Margin="0,0,0,4" Background="#252540" CornerRadius="8">
+                                <Grid ColumnDefinitions="30,*,Auto,Auto">
+                                    <TextBlock Text="📷" FontSize="16" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="{Binding Username}" Foreground="White" FontSize="14" FontWeight="SemiBold"/>
+                                            <Border CornerRadius="8" Padding="6,2"
+                                                    Background="{Binding IsEnabled, Converter={StaticResource BoolToColorConverter}}">
+                                                <TextBlock Text="{Binding IsEnabled, Converter={StaticResource BoolToStatusConverter}}"
+                                                           Foreground="White" FontSize="10"/>
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Role}" Foreground="#888" FontSize="11"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="2"
+                                            Content="{Binding IsEnabled, Converter={StaticResource BoolToToggleTextConverter}}"
+                                            Command="{Binding $parent[ItemsControl].((vm:UserListViewModel)DataContext).ToggleUserEnabledCommand}"
+                                            CommandParameter="{Binding}"
+                                            Background="#334155" Foreground="White" CornerRadius="6" Padding="10,5" FontSize="12"
+                                            Margin="0,0,8,0"/>
+                                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="5">
+                                        <Button Content="✏️" 
+                                                Command="{Binding $parent[ItemsControl].((vm:UserListViewModel)DataContext).EditUserCommand}"
+                                                CommandParameter="{Binding}"
+                                                Background="#f59e0b" Foreground="White" CornerRadius="4" Padding="6,3" FontSize="11"/>
+                                        <Button Content="🗑️" 
+                                                Command="{Binding $parent[ItemsControl].((vm:UserListViewModel)DataContext).DeleteUserCommand}"
+                                                CommandParameter="{Binding}"
+                                                Background="#e94560" Foreground="White" CornerRadius="4" Padding="6,3" FontSize="11"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Loading -->
+        <TextBlock Grid.Row="3" Text="Đang tải..." Foreground="#888" FontSize="14"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   IsVisible="{Binding IsLoading}"/>
+    </Grid>
+</UserControl>

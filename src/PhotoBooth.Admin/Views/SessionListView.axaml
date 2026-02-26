@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoBooth.Admin.ViewModels"
+             x:Class="PhotoBooth.Admin.Views.SessionListView"
+             x:DataType="vm:SessionListViewModel">
+    
+    <Grid RowDefinitions="Auto,Auto,*" Margin="20">
+        <!-- Header -->
+        <Grid Margin="0,0,0,15">
+            <TextBlock Text="📋 Danh sách lượt chụp" FontSize="28" FontWeight="Bold" Foreground="White"/>
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="10">
+                <!-- Total amount -->
+                <Border Background="#1e1e2e" CornerRadius="8" Padding="12,8">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="💰 Tổng:" Foreground="#888" VerticalAlignment="Center" FontSize="14"/>
+                        <TextBlock Text="{Binding TotalAmount}" Foreground="#f59e0b" FontWeight="Bold" 
+                                   VerticalAlignment="Center" FontSize="16"/>
+                    </StackPanel>
+                </Border>
+                <Button Content="🔄 Làm mới" Command="{Binding LoadSessionsCommand}"
+                        Background="#2a2a3e" Foreground="White" CornerRadius="8" Padding="12,8"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Sessions Table -->
+        <Border Grid.Row="2" Background="#1e1e2e" CornerRadius="12" Padding="5">
+            <DataGrid ItemsSource="{Binding Sessions}" 
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserResizeColumns="True"
+                      CanUserReorderColumns="True"
+                      GridLinesVisibility="Horizontal"
+                      BorderThickness="0">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="50"/>
+                    <DataGridTextColumn Header="Thiết bị" Binding="{Binding DeviceId}" Width="110"/>
+                    <DataGridTextColumn Header="Layout" Binding="{Binding LayoutUsed}" Width="90"/>
+                    <DataGridTextColumn Header="Khung" Binding="{Binding FrameUsed}" Width="100"/>
+                    <DataGridTextColumn Header="Ảnh chọn" Binding="{Binding PhotoCount}" Width="80"/>
+                    <DataGridTextColumn Header="Tổng chụp" Binding="{Binding TotalCaptured}" Width="90"/>
+                    <DataGridTextColumn Header="💰 Số tiền" Binding="{Binding Amount, StringFormat='{}{0:N0}đ'}" Width="110"/>
+                    <DataGridTextColumn Header="Thời gian" Binding="{Binding CreatedAt, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <!-- Loading -->
+        <TextBlock Grid.Row="2" Text="Đang tải..." Foreground="#888" FontSize="14"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   IsVisible="{Binding IsLoading}"/>
+    </Grid>
+</UserControl>

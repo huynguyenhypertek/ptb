@@ -1,0 +1,221 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoBooth.UI.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
+             x:Class="PhotoBooth.UI.Views.PhotoSelectionView"
+             x:DataType="vm:PhotoSelectionViewModel">
+
+    <UserControl.Styles>
+        <!-- Image Button Style -->
+        <Style Selector="Button.ImageBtn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Background="{TemplateBinding Background}"
+                                      BorderBrush="{TemplateBinding BorderBrush}"
+                                      BorderThickness="{TemplateBinding BorderThickness}"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Padding="{TemplateBinding Padding}"
+                                      CornerRadius="{TemplateBinding CornerRadius}"/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Button.ImageBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.ImageBtn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+
+        <!-- Photo Thumbnail Button Style -->
+        <Style Selector="Button.PhotoBtn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.PhotoBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <!-- Background Image -->
+        <Image Source="{Binding BackgroundImage}" 
+               Stretch="UniformToFill"/>
+
+        <!-- Content Scaler -->
+        <Viewbox Stretch="Uniform">
+            <Grid Width="1920" Height="1080">
+                
+                <!-- LEFT SIDE: Photo Selection Grid -->
+                <ItemsControl ItemsSource="{Binding Photos}"
+                              HorizontalAlignment="Left"
+                              VerticalAlignment="Center"
+                              Margin="{Binding GridMargin}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" 
+                                       MaxWidth="{Binding $parent[ItemsControl].((vm:PhotoSelectionViewModel)DataContext).GridMaxWidth}"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Command="{Binding $parent[ItemsControl].((vm:PhotoSelectionViewModel)DataContext).ToggleSelectionCommand}"
+                                    CommandParameter="{Binding}"
+                                    Classes="PhotoBtn"
+                                    Margin="{Binding $parent[ItemsControl].((vm:PhotoSelectionViewModel)DataContext).PhotoMargin}">
+                                <Grid Width="{Binding $parent[ItemsControl].((vm:PhotoSelectionViewModel)DataContext).PhotoWidth}" 
+                                      Height="{Binding $parent[ItemsControl].((vm:PhotoSelectionViewModel)DataContext).PhotoHeight}">
+                                    <!-- Photo Thumbnail -->
+                                    <Border CornerRadius="8" ClipToBounds="True" Background="#ddd">
+                                        <Image Source="{Binding Thumbnail}" 
+                                               Stretch="UniformToFill"/>
+                                    </Border>
+                                    
+                                    <!-- Selection Border Highlight -->
+                                    <Border CornerRadius="8"
+                                            BorderBrush="#e94560"
+                                            BorderThickness="4"
+                                            IsVisible="{Binding IsSelected}"/>
+                                    
+                                    <!-- Checkmark -->
+                                    <Border Background="#e94560" 
+                                            CornerRadius="15"
+                                            Width="30" Height="30"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Top"
+                                            Margin="5"
+                                            IsVisible="{Binding IsSelected}">
+                                        <TextBlock Text="✓" 
+                                                   FontSize="18"
+                                                   Foreground="White"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- RIGHT SIDE: Frame Preview - LAYOUT 2 (2 photos) -->
+                <Grid HorizontalAlignment="Right" 
+                      VerticalAlignment="Center"
+                      Margin="0,0,135,10"
+                      Width="332" Height="997"
+                      IsVisible="{Binding IsLayout2}">
+                    
+                    <!-- Selected Photos Layer -->
+                    <Grid>
+                        <Image Source="{Binding SelectedPhoto1}"
+                               Stretch="UniformToFill"
+                               Width="283" Height="394"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Top"
+                               Margin="3,55,0,0"/>
+                        
+                        <Image Source="{Binding SelectedPhoto2}"
+                               Stretch="UniformToFill"
+                               Width="283" Height="394"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Top"
+                               Margin="3,470,0,0"/>
+                    </Grid>
+                    
+                    <!-- Frame Overlay -->
+                    <Image Source="{Binding FramePreviewImage}"
+                           Stretch="Uniform"/>
+                </Grid>
+
+                <!-- RIGHT SIDE: Frame Preview - LAYOUT 6 (6 photos) -->
+                <Grid HorizontalAlignment="Right" 
+                      VerticalAlignment="Center"
+                      Margin="0,0,58,14"
+                      Width="578" Height="862"
+                      IsVisible="{Binding IsLayout6}">
+                    
+                    <!-- Selected Photos Layer -->
+                    <Grid>
+                        <Image Source="{Binding SelectedPhoto1}"
+                               Stretch="UniformToFill"
+                               Width="208" Height="227"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Top"
+                               Margin="67,47,0,0"/>
+                        
+                        <Image Source="{Binding SelectedPhoto2}"
+                               Stretch="UniformToFill"
+                               Width="208" Height="227"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Top"
+                               Margin="302,47,0,0"/>
+                        
+                        <Image Source="{Binding SelectedPhoto3}"
+                               Stretch="UniformToFill"
+                               Width="208" Height="227"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Top"
+                               Margin="68,287,0,0"/>
+                        
+                        <Image Source="{Binding SelectedPhoto4}"
+                               Stretch="UniformToFill"
+                               Width="208" Height="227"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Top"
+                               Margin="303,287,0,0"/>
+                        
+                        <Image Source="{Binding SelectedPhoto5}"
+                               Stretch="UniformToFill"
+                               Width="208" Height="227"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Top"
+                               Margin="67,527,0,0"/>
+                        
+                        <Image Source="{Binding SelectedPhoto6}"
+                               Stretch="UniformToFill"
+                               Width="208" Height="227"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Top"
+                               Margin="302,527,0,0"/>
+                    </Grid>
+                    
+                    <!-- Frame Overlay -->
+                    <Image Source="{Binding FramePreviewImage}"
+                           Stretch="Uniform"/>
+                </Grid>
+
+                <!-- Back Button -->
+                <Button Command="{Binding GoBackCommand}"
+                        Classes="ImageBtn"
+                        Width="200"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Bottom"
+                        Margin="110,0,0,150"
+                        Cursor="Hand">
+                    <Image Source="/Assets/buttons/back.png"/>
+                </Button>
+                
+                <!-- Next Button -->
+                <Button Command="{Binding ConfirmCommand}"
+                        Classes="ImageBtn"
+                        Width="200"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Bottom"
+                        Margin="330,0,0,150"
+                        Cursor="Hand">
+                    <Image Source="/Assets/buttons/next.png"/>
+                </Button>
+
+            </Grid>
+        </Viewbox>
+    </Grid>
+
+</UserControl>

@@ -1,0 +1,121 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PhotoBooth.Admin.ViewModels"
+        xmlns:views="using:PhotoBooth.Admin.Views"
+        x:Class="PhotoBooth.Admin.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="PhotoBooth Admin" Width="1200" Height="800"
+        WindowStartupLocation="CenterScreen"
+        Background="{Binding WindowBg}">
+
+    <Window.DataTemplates>
+        <DataTemplate DataType="{x:Type vm:LoginViewModel}">
+            <views:LoginView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
+            <views:DashboardView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SessionListViewModel}">
+            <views:SessionListView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:StoreListViewModel}">
+            <views:StoreListView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:UserListViewModel}">
+            <views:UserListView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:FrameListViewModel}">
+            <views:FrameListView />
+        </DataTemplate>
+    </Window.DataTemplates>
+
+    <Panel>
+        <!-- LOGIN SCREEN (full screen) -->
+        <Grid IsVisible="{Binding !IsLoggedIn}">
+            <ContentControl Content="{Binding CurrentView}"/>
+        </Grid>
+
+        <!-- MAIN LAYOUT (sidebar + content) -->
+        <Grid IsVisible="{Binding IsLoggedIn}" ColumnDefinitions="220,*">
+            
+            <!-- Sidebar -->
+            <Border Grid.Column="0" Background="{Binding SidebarBg}">
+                <Grid RowDefinitions="*,Auto">
+                    <StackPanel Margin="15">
+                        <TextBlock Text="📷 PhotoBooth" FontSize="22" FontWeight="Bold" 
+                                   Foreground="{Binding TextColor}" Margin="0,20,0,10"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="Admin Panel" FontSize="14" Foreground="{Binding SubtextColor}"
+                                   HorizontalAlignment="Center" Margin="0,0,0,20"/>
+                        
+                        <!-- User info -->
+                        <Border Background="{Binding CardBg}" CornerRadius="8" Padding="12" Margin="0,0,0,5">
+                            <StackPanel>
+                                <TextBlock Text="👤 Đăng nhập:" Foreground="{Binding SubtextColor}" FontSize="12"/>
+                                <TextBlock Text="{Binding CurrentUser}" Foreground="{Binding TextColor}" 
+                                           FontWeight="Bold" FontSize="14"/>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Role + Store info -->
+                        <Border Background="{Binding CardBg}" CornerRadius="8" Padding="12" Margin="0,0,0,20">
+                            <StackPanel>
+                                <TextBlock Text="{Binding CurrentRole}" Foreground="#7c3aed" 
+                                           FontSize="12" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding CurrentStore, StringFormat='📍 {0}'}" 
+                                           Foreground="{Binding SubtextColor}" FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Common Menu -->
+                        <Button Content="📊  Dashboard" Command="{Binding ShowDashboardCommand}"
+                                HorizontalAlignment="Stretch" Padding="12,10"
+                                Background="{Binding CardBg}" Foreground="{Binding TextColor}" Margin="0,5"
+                                CornerRadius="8"/>
+                        <Button Content="📋  Lượt chụp" Command="{Binding ShowSessionsCommand}"
+                                HorizontalAlignment="Stretch" Padding="12,10"
+                                Background="{Binding CardBg}" Foreground="{Binding TextColor}" Margin="0,5"
+                                CornerRadius="8"/>
+                        
+                        <!-- SystemAdmin Only -->
+                        <Border Height="1" Background="#333" Margin="0,10"
+                                IsVisible="{Binding IsSystemAdmin}"/>
+                        <TextBlock Text="QUẢN LÝ HỆ THỐNG" Foreground="#555" FontSize="11"
+                                   Margin="5,5,0,5" IsVisible="{Binding IsSystemAdmin}"/>
+                        <Button Content="🏪  Cửa hàng" Command="{Binding ShowStoresCommand}"
+                                HorizontalAlignment="Stretch" Padding="12,10"
+                                Background="{Binding CardBg}" Foreground="{Binding TextColor}" Margin="0,5"
+                                CornerRadius="8" IsVisible="{Binding IsSystemAdmin}"/>
+                        <Button Content="👥  Tài khoản" Command="{Binding ShowUsersCommand}"
+                                HorizontalAlignment="Stretch" Padding="12,10"
+                                Background="{Binding CardBg}" Foreground="{Binding TextColor}" Margin="0,5"
+                                CornerRadius="8"/>
+                        <Button Content="🎨  Thiết kế" Command="{Binding ShowFramesCommand}"
+                                HorizontalAlignment="Stretch" Padding="12,10"
+                                Background="{Binding CardBg}" Foreground="{Binding TextColor}" Margin="0,5"
+                                CornerRadius="8" IsVisible="{Binding IsSystemAdmin}"/>
+                        
+                        <!-- Logout -->
+                        <Border Height="1" Background="#333" Margin="0,15,0,10"/>
+                        <Button Content="🚪  Đăng xuất" Command="{Binding LogoutCommand}"
+                                HorizontalAlignment="Stretch" Padding="12,10"
+                                Background="#e94560" Foreground="White"
+                                CornerRadius="8"/>
+                    </StackPanel>
+                    
+                    <!-- Theme Toggle at bottom -->
+                    <Button Grid.Row="1" Command="{Binding ToggleThemeCommand}"
+                            Content="{Binding ThemeIcon, StringFormat='{}{0} Đổi giao diện'}"
+                            HorizontalAlignment="Stretch" Padding="12,10" Margin="15,0,15,15"
+                            Background="{Binding CardBg}" Foreground="{Binding TextColor}"
+                            CornerRadius="8" HorizontalContentAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- Content Area -->
+            <Border Grid.Column="1" Background="{Binding WindowBg}">
+                <ContentControl Content="{Binding CurrentView}" Margin="20"/>
+            </Border>
+        </Grid>
+    </Panel>
+</Window>

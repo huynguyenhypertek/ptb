@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoBooth.Admin.ViewModels"
+             x:Class="PhotoBooth.Admin.Views.LoginView"
+             x:DataType="vm:LoginViewModel">
+    
+    <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Border Background="#1e1e2e" CornerRadius="16" Padding="50,40" 
+                Width="400" BoxShadow="0 4 20 0 #40000000">
+            <StackPanel Spacing="15">
+                <!-- Title -->
+                <TextBlock Text="📷" FontSize="48" HorizontalAlignment="Center"/>
+                <TextBlock Text="PhotoBooth Admin" FontSize="24" FontWeight="Bold" 
+                           Foreground="White" HorizontalAlignment="Center"/>
+                <TextBlock Text="Đăng nhập để quản lý" FontSize="14" Foreground="#888"
+                           HorizontalAlignment="Center" Margin="0,0,0,15"/>
+
+                <!-- Username -->
+                <TextBlock Text="Tên đăng nhập" Foreground="#ccc" FontSize="13"/>
+                <TextBox Text="{Binding Username}" Watermark="admin"
+                         Padding="12,10" CornerRadius="8"
+                         KeyDown="OnKeyDown"/>
+
+                <!-- Password -->
+                <TextBlock Text="Mật khẩu" Foreground="#ccc" FontSize="13"/>
+                <TextBox Text="{Binding Password}" PasswordChar="●" Watermark="••••••"
+                         Padding="12,10" CornerRadius="8"
+                         KeyDown="OnKeyDown"/>
+
+                <!-- Error message -->
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="#e94560" 
+                           FontSize="13" IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           TextWrapping="Wrap"/>
+
+                <!-- Login button -->
+                <Button Content="Đăng nhập" Command="{Binding LoginCommand}"
+                        HorizontalAlignment="Stretch" Padding="0,12"
+                        HorizontalContentAlignment="Center"
+                        Background="#7c3aed" Foreground="White" FontWeight="Bold"
+                        CornerRadius="8" Margin="0,10,0,0"
+                        FontSize="16"/>
+                
+                <!-- Loading -->
+                <TextBlock Text="Đang kết nối..." Foreground="#888" FontSize="13"
+                           HorizontalAlignment="Center"
+                           IsVisible="{Binding IsLoading}"/>
+
+
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,82 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoBooth.UI.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
+             x:Class="PhotoBooth.UI.Views.ConfirmPrintView"
+             x:DataType="vm:ConfirmPrintViewModel">
+
+    <UserControl.Styles>
+        <!-- Image Button Style -->
+        <Style Selector="Button.ImageBtn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Background="{TemplateBinding Background}"
+                                      BorderBrush="{TemplateBinding BorderBrush}"
+                                      BorderThickness="{TemplateBinding BorderThickness}"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Padding="{TemplateBinding Padding}"
+                                      CornerRadius="{TemplateBinding CornerRadius}"/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Button.ImageBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.ImageBtn:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <!-- Background -->
+        <Image Source="{Binding BackgroundImage}" 
+               Stretch="UniformToFill"/>
+
+        <!-- Content Scaler -->
+        <Viewbox Stretch="Uniform">
+            <Grid Width="1920" Height="1080">
+                
+                <!-- Final Composed Image - Center -->
+                <Image Source="{Binding FinalImage}"
+                       Stretch="Uniform"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Center"
+                       Margin="0,0,200,0"
+                       MaxHeight="1000"
+                       MaxWidth="1000"/>
+                
+                <!-- Back Button -->
+                <Button Command="{Binding GoBackCommand}"
+                        Classes="ImageBtn"
+                        Width="200"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Bottom"
+                        Margin="100,0,0,100"
+                        Cursor="Hand">
+                    <Image Source="/Assets/buttons/back.png"/>
+                </Button>
+                
+                <!-- Next Button -->
+                <Button Command="{Binding GoNextCommand}"
+                        Classes="ImageBtn"
+                        Width="200"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,150,100"
+                        Cursor="Hand">
+                    <Image Source="/Assets/buttons/next.png"/>
+                </Button>
+
+            </Grid>
+        </Viewbox>
+    </Grid>
+
+</UserControl>

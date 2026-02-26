@@ -1,0 +1,148 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoBooth.UI.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
+             x:Class="PhotoBooth.UI.Views.CaptureView"
+             x:DataType="vm:CaptureViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.ShadowText">
+            <Setter Property="Effect">
+                <DropShadowEffect BlurRadius="4" Color="Black" Opacity="0.5" OffsetX="2" OffsetY="2"/>
+            </Setter>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid Background="Transparent">
+        <!-- 1. Camera Preview Layer (Bottom) -->
+        <!-- Placed in a Viewbox to maintain aspect ratio and fit screen -->
+        <Viewbox Stretch="Uniform">
+            <Grid Width="1920" Height="1080">
+                 <!-- Camera Preview Image -->
+                 <Border ClipToBounds="True"
+                         Width="1400" Height="1000"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center"
+                         Margin="0,0,0,0">
+                     <Image Source="{Binding CameraPreview}" 
+                            Stretch="UniformToFill"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding IsCameraReady}"/>
+                 </Border>
+            </Grid>
+        </Viewbox>
+        
+        <!-- 2. Background Image Layer (Top - with transparent hole) -->
+        <Image Source="{Binding BackgroundImage}" 
+               Stretch="UniformToFill"/>
+
+        <!-- 3. UI Overlay Layer (Text & Buttons) -->
+        <Viewbox Stretch="Uniform">
+            <Grid Width="1920" Height="1080">
+                
+                <!-- ========== LAYOUT 2: Counter & Countdown ========== -->
+                <!-- Left Box: Photo Counter - Layout 2 -->
+                <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="340,410,0,0"
+                            Width="180"
+                            IsVisible="{Binding IsLayout2}">
+                     <TextBlock Text="ĐÃ CHỤP" 
+                                FontSize="22" FontWeight="Bold" Foreground="#333" 
+                                HorizontalAlignment="Center"/>
+                     <TextBlock FontSize="50" FontWeight="Bold" Foreground="#e94560" 
+                                HorizontalAlignment="Center">
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="{}{0}/{1}">
+                                <Binding Path="CurrentPhotoIndex"/>
+                                <Binding Path="TotalPhotos"/>
+                            </MultiBinding>
+                        </TextBlock.Text>
+                     </TextBlock>
+                </StackPanel>
+
+                <!-- Right Box: Countdown - Layout 2 -->
+                <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,130,180,0"
+                            Width="200"
+                            IsVisible="{Binding IsLayout2}">
+                    <TextBlock Text="SẴN SÀNG?" 
+                               FontSize="22" FontWeight="Bold" Foreground="#333" 
+                               HorizontalAlignment="Center"
+                               IsVisible="{Binding IsCountingDown}"/>
+                               
+                    <TextBlock Text="{Binding Countdown}" 
+                               FontSize="70" FontWeight="Bold" Foreground="#e94560" 
+                               HorizontalAlignment="Center"
+                               IsVisible="{Binding IsCountingDown}"/>
+                </StackPanel>
+
+                <!-- ========== LAYOUT 6: Counter & Countdown ========== -->
+                <!-- Left Box: Photo Counter - Layout 6 -->
+                <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="320,410,0,0"
+                            Width="180"
+                            IsVisible="{Binding IsLayout6}">
+                     <TextBlock Text="ĐÃ CHỤP" 
+                                FontSize="22" FontWeight="Bold" Foreground="#333" 
+                                HorizontalAlignment="Center"/>
+                     <TextBlock FontSize="50" FontWeight="Bold" Foreground="#e94560" 
+                                HorizontalAlignment="Center">
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="{}{0}/{1}">
+                                <Binding Path="CurrentPhotoIndex"/>
+                                <Binding Path="TotalPhotos"/>
+                            </MultiBinding>
+                        </TextBlock.Text>
+                     </TextBlock>
+                </StackPanel>
+
+                <!-- Right Box: Countdown - Layout 6 -->
+                <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,130,140,0"
+                            Width="200"
+                            IsVisible="{Binding IsLayout6}">
+                    <TextBlock Text="SẴN SÀNG?" 
+                               FontSize="22" FontWeight="Bold" Foreground="#333" 
+                               HorizontalAlignment="Center"
+                               IsVisible="{Binding IsCountingDown}"/>
+                               
+                    <TextBlock Text="{Binding Countdown}" 
+                               FontSize="70" FontWeight="Bold" Foreground="#e94560" 
+                               HorizontalAlignment="Center"
+                               IsVisible="{Binding IsCountingDown}"/>
+                </StackPanel>
+
+                <!-- Start Button: next.png image -->
+                <Button Command="{Binding StartShootingSequenceCommand}"
+                        IsVisible="{Binding !IsShootingInProgress}"
+                        HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                        Margin="0,0,0,50"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="0"
+                        Cursor="Hand">
+                    <Button.Styles>
+                        <Style Selector="Button:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="Transparent"/>
+                        </Style>
+                    </Button.Styles>
+                     <Image Source="avares://PhotoBooth.UI/Assets/buttons/next.png"
+                            Width="200" Height="80"
+                            Stretch="Uniform"/>
+                </Button>
+                
+                <!-- Status Message (Top Center) -->
+                <TextBlock Text="{Binding StatusMessage}"
+                           HorizontalAlignment="Center" VerticalAlignment="Top"
+                           Margin="0,20,0,0"
+                           FontSize="24" Foreground="White"
+                           Classes="ShadowText"/>
+            </Grid>
+        </Viewbox>
+        
+        <!-- 4. Flash Effect Overlay (White flash after capture) -->
+        <Border Background="White" 
+                Opacity="0.9"
+                IsVisible="{Binding IsFlashing}"/>
+    </Grid>
+
+</UserControl>

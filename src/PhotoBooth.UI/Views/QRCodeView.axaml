@@ -1,0 +1,98 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoBooth.UI.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
+             x:Class="PhotoBooth.UI.Views.QRCodeView"
+             x:DataType="vm:QRCodeViewModel">
+
+    <Grid Background="#1a1a2e">
+        
+        <!-- Main Content -->
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="30">
+            
+            <TextBlock Text="✓ IN ẢNH THÀNH CÔNG!" 
+                       FontSize="42" 
+                       FontWeight="Bold" 
+                       Foreground="#28a745"
+                       HorizontalAlignment="Center"/>
+            
+            <!-- QR Code -->
+            <Border Background="White" 
+                    Width="320" Height="320" 
+                    CornerRadius="20"
+                    HorizontalAlignment="Center">
+                <!-- Loading state -->
+                <TextBlock Text="⏳" FontSize="60" 
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           IsVisible="{Binding IsUploading}"/>
+            </Border>
+            
+            <!-- Real QR Code overlaid -->
+            <Image Source="{Binding QrCodeImage}" 
+                   Width="300" Height="300"
+                   Margin="0,-340,0,0"
+                   HorizontalAlignment="Center"
+                   IsVisible="{Binding !IsUploading}"/>
+
+            <TextBlock Text="{Binding StatusText}" 
+                       FontSize="20" 
+                       Foreground="#ccc"
+                       HorizontalAlignment="Center"/>
+            
+            <Button Command="{Binding ShowReturnCommand}"
+                    Content="🏠 Về màn hình chính"
+                    Width="350" Height="70"
+                    Background="#e94560"
+                    Foreground="White"
+                    FontSize="22"
+                    FontWeight="Bold"
+                    CornerRadius="15"
+                    HorizontalContentAlignment="Center"
+                    Margin="0,20,0,0"/>
+        </StackPanel>
+        
+        <!-- Return Popup Overlay -->
+        <Border Background="#000000AA" 
+                IsVisible="{Binding ShowReturnPopup}">
+            <Border Background="#1a1a2e" 
+                    Width="500" Height="280"
+                    CornerRadius="20"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <StackPanel VerticalAlignment="Center" Spacing="25" Margin="40">
+                    <TextBlock Text="Quay về màn hình chính?" 
+                               FontSize="26"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               HorizontalAlignment="Center"/>
+                    
+                    <TextBlock Text="Bạn có chắc muốn kết thúc phiên này?" 
+                               FontSize="18"
+                               Foreground="#888"
+                               HorizontalAlignment="Center"/>
+                    
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20">
+                        <Button Command="{Binding CancelReturnCommand}"
+                                Content="Ở lại"
+                                Background="#0f3460"
+                                Foreground="White"
+                                FontSize="18"
+                                Padding="40,15"
+                                CornerRadius="10"/>
+                        
+                        <Button Command="{Binding ConfirmReturnCommand}"
+                                Content="✓ Xác nhận"
+                                Background="#e94560"
+                                Foreground="White"
+                                FontSize="18"
+                                Padding="40,15"
+                                CornerRadius="10"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+    </Grid>
+
+</UserControl>

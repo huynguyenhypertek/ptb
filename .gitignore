@@ -1,0 +1,31 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.sln.docstates
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Uploads (runtime photos)
+src/PhotoBooth.API/uploads/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Ngrok
+*.ngrok
+
+# Build
+publish/
+out/
