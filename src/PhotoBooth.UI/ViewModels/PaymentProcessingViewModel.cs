@@ -12,7 +12,7 @@ namespace PhotoBooth.UI.ViewModels;
 /// For now, just shows background and allows navigation to next step.
 /// Actual payment logic will be added later.
 /// </summary>
-public partial class PaymentProcessingViewModel : ViewModelBase
+public partial class PaymentProcessingViewModel : ViewModelBase, IDisposable
 {
     [ObservableProperty]
     private Bitmap? _backgroundImage;
@@ -28,7 +28,9 @@ public partial class PaymentProcessingViewModel : ViewModelBase
         try
         {
             var uri = new Uri("avares://PhotoBooth.UI/Assets/backgrounds/back5_quetQR.png");
+            var oldBg = BackgroundImage;
             BackgroundImage = new Bitmap(AssetLoader.Open(uri));
+            oldBg?.Dispose();
         }
         catch (Exception ex)
         {
@@ -48,5 +50,11 @@ public partial class PaymentProcessingViewModel : ViewModelBase
     private void GoBack()
     {
         NavigationService.NavigateTo<PaymentAmountViewModel>();
+    }
+
+    public void Dispose()
+    {
+        BackgroundImage?.Dispose();
+        BackgroundImage = null;
     }
 }

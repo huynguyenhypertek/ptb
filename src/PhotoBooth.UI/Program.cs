@@ -1,5 +1,6 @@
-﻿using Avalonia;
+using Avalonia;
 using System;
+using PhotoBooth.UI.Services;
 
 namespace PhotoBooth.UI;
 
@@ -12,6 +13,10 @@ sealed class Program
     public static void Main(string[] args)
     {
         DeviceConfig.ParseArgs(args);
+
+        // Disabled: User wants to keep photos on disk
+        // SessionService.CleanupStaleSessions(TimeSpan.FromHours(24));
+
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

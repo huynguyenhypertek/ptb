@@ -11,7 +11,7 @@ namespace PhotoBooth.UI.ViewModels;
 /// Screen 4: Payment Amount Display
 /// Shows dynamic background based on selected layout (70k for layout6, 50k for layout2)
 /// </summary>
-public partial class PaymentAmountViewModel : ViewModelBase
+public partial class PaymentAmountViewModel : ViewModelBase, IDisposable
 {
     [ObservableProperty]
     private Bitmap? _backgroundImage;
@@ -39,7 +39,9 @@ public partial class PaymentAmountViewModel : ViewModelBase
 
         try
         {
+            var oldBg = BackgroundImage;
             BackgroundImage = new Bitmap(AssetLoader.Open(new Uri(imagePath)));
+            oldBg?.Dispose();
         }
         catch (Exception ex)
         {
@@ -57,5 +59,11 @@ public partial class PaymentAmountViewModel : ViewModelBase
     private void GoBack()
     {
         NavigationService.NavigateTo<BackgroundSelectionViewModel>();
+    }
+
+    public void Dispose()
+    {
+        BackgroundImage?.Dispose();
+        BackgroundImage = null;
     }
 }

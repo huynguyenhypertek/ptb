@@ -16,7 +16,12 @@ public class Session
     public bool IsPaid { get; set; }
     public string? FinalImagePath { get; set; }
     public string? QRCodeUrl { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    /// <summary>
+    /// Filesystem path for this session's photo directory.
+    /// Set by CaptureViewModel when creating the session folder.
+    /// </summary>
+    public string? SessionDirectory { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
 /// <summary>

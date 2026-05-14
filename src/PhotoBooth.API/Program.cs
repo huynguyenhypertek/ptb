@@ -6,12 +6,23 @@ using PhotoBooth.API.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// FIX #4 — Global request body size limit (10MB for image uploads)
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10MB
+});
+
 // Database
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite("Data Source=photobooth.db"));
 
-// JWT Auth
-var jwtKey = "PhotoBoothSuperSecretKey123456789!";
+// Task 1.2 — JWT key from config (NOT hardcoded)
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new Exception("JWT Key not configured! Run: dotnet user-secrets set 'Jwt:Key' 'your-secret-min-32-chars'");
+if (jwtKey.Length < 32)
+    throw new Exception("JWT Key must be at least 32 characters for HMAC-SHA256 security.");
+if (jwtKey.Contains("CHANGE_ME") || jwtKey.Contains("SuperSecret"))
+    throw new Exception("JWT Key is using a placeholder value! Set a real secret.");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -26,14 +37,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddSingleton(jwtKey);
+builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 
-// CORS - cho phép app khác kết nối
+// Task 1.5 — Strict CORS: must be configured in appsettings.json, no fallback
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+        if (allowedOrigins == null || allowedOrigins.Length == 0)
+            throw new Exception("CORS AllowedOrigins not configured! Set Cors:AllowedOrigins in appsettings.json");
+        policy.WithOrigins(allowedOrigins)
+              .WithMethods("GET", "POST", "PUT", "DELETE")
+              .AllowAnyHeader();
     });
 });
 
@@ -87,9 +104,10 @@ using (var scope = app.Services.CreateScope())
         
         db.SaveChanges();
         Console.WriteLine("[SEED] Demo data created:");
-        Console.WriteLine("  admin / admin123 (SystemAdmin)");
-        Console.WriteLine("  adminCH1 / admin123 (StoreAdmin - Cửa hàng 1)");
-        Console.WriteLine("  Pb1_Ch1 / admin123 (Device - Máy 1, Cửa hàng 1)");
+        Console.WriteLine("  admin (SystemAdmin)");
+        Console.WriteLine("  adminCH1 (StoreAdmin - Cửa hàng 1)");
+        Console.WriteLine("  Pb1_Ch1 (Device - Máy 1, Cửa hàng 1)");
+        Console.WriteLine("  [Default password — see source code]");
     }
 
     // Seed default frames if empty

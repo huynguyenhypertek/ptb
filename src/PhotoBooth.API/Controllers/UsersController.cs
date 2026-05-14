@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using PhotoBooth.API.Data;
 using PhotoBooth.API.Models;
@@ -7,6 +8,7 @@ namespace PhotoBooth.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = "SystemAdmin")]
 public class UsersController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -32,6 +34,7 @@ public class UsersController : ControllerBase
     }
 
     // GET /api/users/check/{deviceId} — Check if device is enabled
+    [AllowAnonymous]
     [HttpGet("check/{deviceId}")]
     public async Task<IActionResult> CheckDevice(string deviceId)
     {
@@ -69,6 +72,11 @@ public class UsersController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateUserRequest request)
     {
+        // M3-FIX: Validate role against allowed values — free-form role strings break authorization policies
+        var allowedRoles = new[] { "SystemAdmin", "StoreAdmin", "Device" };
+        if (!allowedRoles.Contains(request.Role))
+            return BadRequest(new { message = $"Invalid role. Allowed: {string.Join(", ", allowedRoles)}" });
+
         if (await _db.Users.AnyAsync(u => u.Username == request.Username))
         {
             return BadRequest(new { message = "Username đã tồn tại" });
@@ -93,6 +101,11 @@ public class UsersController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateUserRequest request)
     {
+        // M3-FIX: Same role allowlist as Create
+        var allowedRoles = new[] { "SystemAdmin", "StoreAdmin", "Device" };
+        if (!allowedRoles.Contains(request.Role))
+            return BadRequest(new { message = $"Invalid role. Allowed: {string.Join(", ", allowedRoles)}" });
+
         var user = await _db.Users.FindAsync(id);
         if (user == null) return NotFound();
 

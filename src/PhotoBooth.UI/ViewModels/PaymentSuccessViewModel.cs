@@ -4,6 +4,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using PhotoBooth.UI.Services;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace PhotoBooth.UI.ViewModels;
@@ -12,17 +13,19 @@ namespace PhotoBooth.UI.ViewModels;
 /// Screen 6: Payment Success Notification
 /// Shows success background for 3 seconds then auto-navigates to capture.
 /// </summary>
-public partial class PaymentSuccessViewModel : ViewModelBase
+public partial class PaymentSuccessViewModel : ViewModelBase, IDisposable
 {
     [ObservableProperty]
     private Bitmap? _backgroundImage;
+
+    private readonly CancellationTokenSource _cts = new();
 
     public PaymentSuccessViewModel(NavigationService navigationService, SessionService sessionService) 
         : base(navigationService, sessionService)
     {
         LoadBackground();
         // Start auto-navigation timer
-        Dispatcher.UIThread.InvokeAsync(AutoNavigateToCapture);
+        Dispatcher.UIThread.InvokeAsync(() => AutoNavigateToCapture(_cts.Token));
     }
 
     private void LoadBackground()
@@ -30,7 +33,9 @@ public partial class PaymentSuccessViewModel : ViewModelBase
         try
         {
             var uri = new Uri("avares://PhotoBooth.UI/Assets/backgrounds/back6 thanh cong.png");
+            var oldBg = BackgroundImage;
             BackgroundImage = new Bitmap(AssetLoader.Open(uri));
+            oldBg?.Dispose();
         }
         catch (Exception ex)
         {
@@ -38,19 +43,34 @@ public partial class PaymentSuccessViewModel : ViewModelBase
         }
     }
 
-    private async Task AutoNavigateToCapture()
+    private async Task AutoNavigateToCapture(CancellationToken ct)
     {
         try
         {
             // Wait for 3 seconds
-            await Task.Delay(3000);
+            await Task.Delay(3000, ct);
+            
+            if (ct.IsCancellationRequested) return;
             
             // Navigate to capture screen
             NavigationService.NavigateTo<CaptureViewModel>();
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when disposed before timer fires
         }
         catch (Exception ex)
         {
              Console.WriteLine($"[ERROR] Auto navigation failed: {ex.Message}");
         }
     }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+        BackgroundImage?.Dispose();
+        BackgroundImage = null;
+    }
 }
+

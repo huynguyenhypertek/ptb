@@ -2,8 +2,8 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Net.Http.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -18,7 +18,7 @@ namespace PhotoBooth.UI.ViewModels;
 /// <summary>
 /// Screen 3: Background Selection - loads frames from API based on store permissions
 /// </summary>
-public partial class BackgroundSelectionViewModel : ViewModelBase
+public partial class BackgroundSelectionViewModel : ViewModelBase, IDisposable
 {
     [ObservableProperty]
     private Thickness _containerMargin;
@@ -47,7 +47,9 @@ public partial class BackgroundSelectionViewModel : ViewModelBase
     [ObservableProperty]
     private string? _selectedBackgroundId;
 
-    private static readonly string ApiBaseUrl = "https://intellective-unimpinging-greyson.ngrok-free.dev";
+
+    private bool _disposed;
+    private readonly CancellationTokenSource _cts = new();
 
     public BackgroundSelectionViewModel(NavigationService navigationService, SessionService sessionService) 
         : base(navigationService, sessionService)
@@ -78,12 +80,13 @@ public partial class BackgroundSelectionViewModel : ViewModelBase
             var storeId = DeviceConfig.StoreId;
             if (storeId > 0)
             {
-                using var client = new HttpClient();
-                client.DefaultRequestHeaders.Add("ngrok-skip-browser-warning", "1");
-                client.Timeout = TimeSpan.FromSeconds(5);
+                var client = HttpService.Client;
+                var apiBase = DeviceConfig.ApiBaseUrl;
                 
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(10));
                 var frames = await client.GetFromJsonAsync<ApiFrame[]>(
-                    $"{ApiBaseUrl}/api/frames/store/{storeId}?layoutType={layoutId}");
+                    $"{apiBase}/api/frames/store/{storeId}?layoutType={layoutId}", timeoutCts.Token);
 
                 if (frames != null && frames.Length > 0)
                 {
@@ -96,10 +99,14 @@ public partial class BackgroundSelectionViewModel : ViewModelBase
                         {
                             Id = $"api_frame_{frames[0].Id}",
                             Name = frames[0].Name,
-                            ImagePath = $"{ApiBaseUrl}/api/frames/{frames[0].Id}/image"
+                            ImagePath = $"{apiBase}/api/frames/{frames[0].Id}/image"
                         };
                         Option1Name = _bg1.Name;
-                        Option1Image = await LoadBitmapFromUrl(_bg1.ImagePath);
+                        var img1 = await LoadBitmapFromUrl(_bg1.ImagePath);
+                        if (_disposed) { img1?.Dispose(); return; }
+                        var oldOpt1 = Option1Image;
+                        Option1Image = img1;
+                        oldOpt1?.Dispose();
                     }
 
                     // Load second frame
@@ -109,10 +116,14 @@ public partial class BackgroundSelectionViewModel : ViewModelBase
                         {
                             Id = $"api_frame_{frames[1].Id}",
                             Name = frames[1].Name,
-                            ImagePath = $"{ApiBaseUrl}/api/frames/{frames[1].Id}/image"
+                            ImagePath = $"{apiBase}/api/frames/{frames[1].Id}/image"
                         };
                         Option2Name = _bg2.Name;
-                        Option2Image = await LoadBitmapFromUrl(_bg2.ImagePath);
+                        var img2 = await LoadBitmapFromUrl(_bg2.ImagePath);
+                        if (_disposed) { img2?.Dispose(); return; }
+                        var oldOpt2 = Option2Image;
+                        Option2Image = img2;
+                        oldOpt2?.Dispose();
                     }
 
                     return; // Success - don't fall through to defaults
@@ -130,6 +141,7 @@ public partial class BackgroundSelectionViewModel : ViewModelBase
 
     private void LoadDefaultBackgrounds(string? layoutId)
     {
+        if (_disposed) return;
         Console.WriteLine("[BG] Using default built-in frames");
         
         if (layoutId == "layout6")
@@ -145,17 +157,22 @@ public partial class BackgroundSelectionViewModel : ViewModelBase
         
         Option1Name = _bg1.Name;
         Option2Name = _bg2.Name;
+        var oldOpt1 = Option1Image;
         Option1Image = LoadBitmapFromAsset(_bg1.ImagePath);
+        oldOpt1?.Dispose();
+        var oldOpt2 = Option2Image;
         Option2Image = LoadBitmapFromAsset(_bg2.ImagePath);
+        oldOpt2?.Dispose();
     }
 
     private async Task<Bitmap?> LoadBitmapFromUrl(string url)
     {
         try
         {
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("ngrok-skip-browser-warning", "1");
-            var bytes = await client.GetByteArrayAsync(url);
+            var client = HttpService.Client;
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(10));
+            var bytes = await client.GetByteArrayAsync(url, timeoutCts.Token);
             using var ms = new MemoryStream(bytes);
             return new Bitmap(ms);
         }
@@ -221,6 +238,17 @@ public partial class BackgroundSelectionViewModel : ViewModelBase
     private void GoBack()
     {
         NavigationService.NavigateTo<LayoutSelectionViewModel>();
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        _cts.Cancel();
+        _cts.Dispose();
+        Option1Image?.Dispose();
+        Option1Image = null;
+        Option2Image?.Dispose();
+        Option2Image = null;
     }
 }
 

@@ -1,13 +1,10 @@
 using System;
-using System.IO;
-using System.Net.Http;
-using System.Text.Json;
+using System.Threading;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhotoBooth.UI.Services;
-using QRCoder;
 
 namespace PhotoBooth.UI.ViewModels;
 
@@ -17,7 +14,7 @@ namespace PhotoBooth.UI.ViewModels;
 /// State 2: nen11.png — shows "Về MH chính" button  
 /// State 3: nen11 xac nhan — confirmation to return
 /// </summary>
-public partial class ThankYouViewModel : ViewModelBase
+public partial class ThankYouViewModel : ViewModelBase, IDisposable
 {
     [ObservableProperty]
     private Bitmap? _backgroundImage;
@@ -37,6 +34,9 @@ public partial class ThankYouViewModel : ViewModelBase
     [ObservableProperty]
     private bool _showConfirmation = false; // State 3: Confirm return
 
+    private bool _disposed;
+    private readonly CancellationTokenSource _cts = new();
+
     public ThankYouViewModel(NavigationService navigationService, SessionService sessionService) 
         : base(navigationService, sessionService)
     {
@@ -49,7 +49,9 @@ public partial class ThankYouViewModel : ViewModelBase
         try
         {
             var bgPath = "avares://PhotoBooth.UI/Assets/backgrounds/nen10.5.png";
+            var oldBg = BackgroundImage;
             BackgroundImage = new Bitmap(AssetLoader.Open(new Uri(bgPath)));
+            oldBg?.Dispose();
         }
         catch (Exception ex)
         {
@@ -62,54 +64,33 @@ public partial class ThankYouViewModel : ViewModelBase
         try
         {
             var finalImage = SessionService.CurrentSession.FinalImagePath;
-            if (string.IsNullOrEmpty(finalImage) || !File.Exists(finalImage))
+
+            // Black QR on white background (matching original ThankYouViewModel style)
+            var (qrBitmap, statusText, success) = await QRUploadService.UploadAndGenerateQRAsync(
+                finalImage,
+                foregroundColor: new byte[] { 0, 0, 0 },
+                backgroundColor: new byte[] { 255, 255, 255 },
+                _cts.Token);
+
+            if (_disposed) { qrBitmap?.Dispose(); return; }
+
+            if (success && qrBitmap != null)
             {
-                StatusText = "❌ Không tìm thấy ảnh";
-                return;
+                var oldQr = QrCodeImage;
+                QrCodeImage = qrBitmap;
+                oldQr?.Dispose();
+                StatusText = statusText;
+            }
+            else
+            {
+                StatusText = statusText;
             }
 
-            var apiBase = DeviceConfig.ApiBaseUrl;
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("ngrok-skip-browser-warning", "1");
-            client.Timeout = TimeSpan.FromSeconds(30);
-
-            using var form = new MultipartFormDataContent();
-            var fileBytes = await File.ReadAllBytesAsync(finalImage);
-            var fileContent = new ByteArrayContent(fileBytes);
-            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
-            form.Add(fileContent, "file", "photo.png");
-
-            var response = await client.PostAsync($"{apiBase}/api/photos/upload", form);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                StatusText = "❌ Upload thất bại";
-                return;
-            }
-
-            var json = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<UploadResult>(json);
-
-            if (result?.code == null)
-            {
-                StatusText = "❌ Lỗi xử lý";
-                return;
-            }
-
-            // Generate QR code
-            var downloadUrl = $"{apiBase}/photos/{result.code}";
-            Console.WriteLine($"[QR] Download URL: {downloadUrl}");
-
-            using var qrGenerator = new QRCodeGenerator();
-            var qrData = qrGenerator.CreateQrCode(downloadUrl, QRCodeGenerator.ECCLevel.M);
-            using var qrCode = new PngByteQRCode(qrData);
-            var qrBytes = qrCode.GetGraphic(20, new byte[] { 0, 0, 0 }, new byte[] { 255, 255, 255 });
-
-            using var ms = new MemoryStream(qrBytes);
-            QrCodeImage = new Bitmap(ms);
-
-            StatusText = "📱 Quét mã QR để tải ảnh";
             Console.WriteLine($"[QR] Generated successfully");
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when disposed during upload
         }
         catch (Exception ex)
         {
@@ -127,7 +108,9 @@ public partial class ThankYouViewModel : ViewModelBase
         try
         {
             var bgPath = "avares://PhotoBooth.UI/Assets/backgrounds/nen11.png";
+            var oldBg = BackgroundImage;
             BackgroundImage = new Bitmap(AssetLoader.Open(new Uri(bgPath)));
+            oldBg?.Dispose();
         }
         catch (Exception ex)
         {
@@ -147,7 +130,9 @@ public partial class ThankYouViewModel : ViewModelBase
         try
         {
             var bgPath = "avares://PhotoBooth.UI/Assets/backgrounds/nen11 xac nhan quay ve man hinh chinh.png";
+            var oldBg = BackgroundImage;
             BackgroundImage = new Bitmap(AssetLoader.Open(new Uri(bgPath)));
+            oldBg?.Dispose();
             ShowQRScreen = false;
             ShowThankYou = false;
             ShowConfirmation = true;
@@ -167,10 +152,15 @@ public partial class ThankYouViewModel : ViewModelBase
         SessionService.StartNewSession();
         NavigationService.NavigateTo<StartViewModel>();
     }
-}
 
-public class UploadResult
-{
-    public string? code { get; set; }
-    public string? fileName { get; set; }
+    public void Dispose()
+    {
+        _disposed = true;
+        _cts.Cancel();
+        _cts.Dispose();
+        BackgroundImage?.Dispose();
+        BackgroundImage = null;
+        QrCodeImage?.Dispose();
+        QrCodeImage = null;
+    }
 }

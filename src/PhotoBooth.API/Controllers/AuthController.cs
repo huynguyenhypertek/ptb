@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -10,15 +11,18 @@ namespace PhotoBooth.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[AllowAnonymous]
 public class AuthController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly string _jwtKey;
+    private readonly IConfiguration _config;
 
-    public AuthController(AppDbContext db, string jwtKey)
+    public AuthController(AppDbContext db, string jwtKey, IConfiguration config)
     {
         _db = db;
         _jwtKey = jwtKey;
+        _config = config;
     }
 
     public class LoginRequest
@@ -69,8 +73,9 @@ public class AuthController : ControllerBase
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var expiryHours = _config.GetValue<int>("Jwt:TokenExpiryHours", 2);
         var token = new JwtSecurityToken(
-            expires: DateTime.Now.AddDays(7),
+            expires: DateTime.UtcNow.AddHours(expiryHours),
             claims: claims,
             signingCredentials: creds
         );

@@ -36,6 +36,11 @@ public interface ICameraService : IDisposable
     event EventHandler<byte[]>? FrameReady;
     
     /// <summary>
+    /// Event raised when camera connection is lost (read timeout or too many consecutive failures).
+    /// </summary>
+    event EventHandler? CameraError;
+    
+    /// <summary>
     /// Gets whether the camera is currently running.
     /// </summary>
     bool IsRunning { get; }

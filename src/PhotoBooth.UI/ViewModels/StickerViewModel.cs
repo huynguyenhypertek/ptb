@@ -8,6 +8,9 @@ namespace PhotoBooth.UI.ViewModels;
 
 /// <summary>
 /// Screen 9: Add stickers to the final image
+/// WARNING: NOT IN ACTIVE FLOW — Sticker feature is bypassed in the current flow.
+/// PhotoSelectionViewModel.Confirm() navigates directly to ConfirmPrintViewModel,
+/// skipping this screen entirely. Kept for potential future use.
 /// </summary>
 public partial class StickerViewModel : ViewModelBase
 {

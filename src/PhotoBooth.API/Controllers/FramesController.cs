@@ -1,12 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using PhotoBooth.API.Data;
+using PhotoBooth.API.Helpers;
 using PhotoBooth.API.Models;
 
 namespace PhotoBooth.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = "SystemAdmin")]
 public class FramesController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -32,6 +35,7 @@ public class FramesController : ControllerBase
     }
 
     // GET /api/frames/{id}/image — Serve image file
+    [AllowAnonymous]
     [HttpGet("{id}/image")]
     public async Task<IActionResult> GetImage(int id)
     {
@@ -39,21 +43,33 @@ public class FramesController : ControllerBase
         if (frame == null) return NotFound();
 
         var filePath = Path.Combine(_uploadDir, frame.FileName);
+
+        // F3-FIX — Path containment: ensure FileName from DB cannot escape _uploadDir
+        if (!Path.GetFullPath(filePath).StartsWith(Path.GetFullPath(_uploadDir)))
+            return BadRequest("Invalid file path");
+
         if (!System.IO.File.Exists(filePath)) return NotFound("File not found");
 
-        var bytes = await System.IO.File.ReadAllBytesAsync(filePath);
-        return File(bytes, "image/png");
+        // H4-FIX: Stream via PhysicalFile instead of ReadAllBytesAsync — prevents RAM exhaustion
+        // on the public [AllowAnonymous] endpoint under concurrent device polling.
+        var contentType = Path.GetExtension(filePath).ToLower() switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            _ => "application/octet-stream"
+        };
+        return PhysicalFile(filePath, contentType);
     }
 
     // POST /api/frames — Upload frame image
     [HttpPost]
     public async Task<IActionResult> Upload([FromForm] IFormFile file, [FromForm] string name, [FromForm] string layoutType)
     {
-        if (file == null || file.Length == 0)
-            return BadRequest(new { message = "No file provided" });
+        var error = FileValidationHelper.Validate(file);
+        if (error != null) return BadRequest(new { message = error });
 
         // Generate unique filename
-        var ext = Path.GetExtension(file.FileName);
+        var ext = Path.GetExtension(file.FileName)!.ToLower();
         var fileName = $"{Guid.NewGuid():N}{ext}";
         var filePath = Path.Combine(_uploadDir, fileName);
 
@@ -99,8 +115,10 @@ public class FramesController : ControllerBase
         var frame = await _db.Frames.FindAsync(id);
         if (frame == null) return NotFound();
 
-        // Delete file
+        // Delete file — A1-FIX: path containment check (same pattern as GetImage F3-FIX)
         var filePath = Path.Combine(_uploadDir, frame.FileName);
+        if (!Path.GetFullPath(filePath).StartsWith(Path.GetFullPath(_uploadDir)))
+            return BadRequest("Invalid file path");
         if (System.IO.File.Exists(filePath))
             System.IO.File.Delete(filePath);
 
@@ -114,6 +132,7 @@ public class FramesController : ControllerBase
     // ============ Store-Frame Assignment ============
 
     // GET /api/frames/store/{storeId}?layoutType=layout2
+    [AllowAnonymous]
     [HttpGet("store/{storeId}")]
     public async Task<IActionResult> GetByStore(int storeId, [FromQuery] string? layoutType)
     {

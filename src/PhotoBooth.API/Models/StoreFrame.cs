@@ -8,5 +8,5 @@ public class StoreFrame
     public int Id { get; set; }
     public int StoreId { get; set; }
     public int FrameId { get; set; }
-    public DateTime AssignedAt { get; set; } = DateTime.Now;
+    public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
 }

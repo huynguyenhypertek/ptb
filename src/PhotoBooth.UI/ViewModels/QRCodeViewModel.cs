@@ -1,19 +1,16 @@
 using System;
-using System.IO;
-using System.Net.Http;
-using System.Text.Json;
+using System.Threading;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhotoBooth.UI.Services;
-using QRCoder;
 
 namespace PhotoBooth.UI.ViewModels;
 
 /// <summary>
 /// Screen 12: QR Code to download photos on phone
 /// </summary>
-public partial class QRCodeViewModel : ViewModelBase
+public partial class QRCodeViewModel : ViewModelBase, IDisposable
 {
     [ObservableProperty]
     private Bitmap? _qrCodeImage;
@@ -27,6 +24,9 @@ public partial class QRCodeViewModel : ViewModelBase
     [ObservableProperty]
     private bool _showReturnPopup;
 
+    private bool _disposed;
+    private readonly CancellationTokenSource _cts = new();
+
     public QRCodeViewModel(NavigationService navigationService, SessionService sessionService) 
         : base(navigationService, sessionService)
     {
@@ -38,60 +38,33 @@ public partial class QRCodeViewModel : ViewModelBase
         try
         {
             var finalImage = SessionService.CurrentSession.FinalImagePath;
-            if (string.IsNullOrEmpty(finalImage) || !File.Exists(finalImage))
+
+            // White QR on dark background (matching original QRCodeViewModel style)
+            var (qrBitmap, statusText, success) = await QRUploadService.UploadAndGenerateQRAsync(
+                finalImage,
+                foregroundColor: new byte[] { 255, 255, 255 },
+                backgroundColor: new byte[] { 30, 30, 46 },
+                _cts.Token);
+
+            if (_disposed) { qrBitmap?.Dispose(); return; }
+
+            if (success && qrBitmap != null)
             {
-                StatusText = "❌ Không tìm thấy ảnh";
-                IsUploading = false;
-                return;
+                var oldQr = QrCodeImage;
+                QrCodeImage = qrBitmap;
+                oldQr?.Dispose();
+                StatusText = statusText;
+            }
+            else
+            {
+                StatusText = statusText;
             }
 
-            // Upload to API
-            var apiBase = DeviceConfig.ApiBaseUrl;
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("ngrok-skip-browser-warning", "1");
-            client.Timeout = TimeSpan.FromSeconds(30);
-
-            using var form = new MultipartFormDataContent();
-            var fileBytes = await File.ReadAllBytesAsync(finalImage);
-            var fileContent = new ByteArrayContent(fileBytes);
-            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
-            form.Add(fileContent, "file", "photo.png");
-
-            var response = await client.PostAsync($"{apiBase}/api/photos/upload", form);
-            
-            if (!response.IsSuccessStatusCode)
-            {
-                StatusText = "❌ Upload thất bại";
-                IsUploading = false;
-                return;
-            }
-
-            var json = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<UploadResult>(json);
-            
-            if (result?.code == null)
-            {
-                StatusText = "❌ Lỗi xử lý";
-                IsUploading = false;
-                return;
-            }
-
-            // Generate QR code pointing to download page
-            var downloadUrl = $"{apiBase}/photos/{result.code}";
-            Console.WriteLine($"[QR] Download URL: {downloadUrl}");
-
-            using var qrGenerator = new QRCodeGenerator();
-            var qrData = qrGenerator.CreateQrCode(downloadUrl, QRCodeGenerator.ECCLevel.M);
-            using var qrCode = new PngByteQRCode(qrData);
-            var qrBytes = qrCode.GetGraphic(20, new byte[] { 255, 255, 255 }, new byte[] { 30, 30, 46 });
-
-            using var ms = new MemoryStream(qrBytes);
-            QrCodeImage = new Bitmap(ms);
-
-            StatusText = "📱 Quét mã QR để tải ảnh về điện thoại";
             IsUploading = false;
-
-            Console.WriteLine($"[QR] Generated for: {downloadUrl}");
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when disposed during upload
         }
         catch (Exception ex)
         {
@@ -111,6 +84,8 @@ public partial class QRCodeViewModel : ViewModelBase
     private void ConfirmReturn()
     {
         ShowReturnPopup = false;
+        // Finding 5: Trigger session cleanup before returning to Start
+        SessionService.StartNewSession();
         NavigationService.NavigateTo<StartViewModel>();
     }
 
@@ -119,6 +94,13 @@ public partial class QRCodeViewModel : ViewModelBase
     {
         ShowReturnPopup = false;
     }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        _cts.Cancel();
+        _cts.Dispose();
+        QrCodeImage?.Dispose();
+        QrCodeImage = null;
+    }
 }
-
-

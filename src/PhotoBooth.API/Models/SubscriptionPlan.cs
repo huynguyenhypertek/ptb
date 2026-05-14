@@ -11,5 +11,5 @@ public class SubscriptionPlan
     public bool HasCustomFrames { get; set; }        // Được upload khung nền riêng
     public bool HasAnalytics { get; set; }           // Được xem thống kê nâng cao
     public bool IsActive { get; set; } = true;       // Còn hoạt động không
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

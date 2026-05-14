@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace PhotoBooth.UI.Services;
@@ -26,37 +25,38 @@ public partial class NavigationService : ObservableObject
         {
             var oldView = CurrentView;
             
-            // Create new view first to ensure responsiveness
-            CurrentView = factory();
+            // Dispose old view FIRST to free memory before new constructor allocates
+            DisposeOldView(oldView);
             
-            // Dispose old view asynchronously to avoid blocking UI
-            DisposeViewAsync(oldView);
+            // Now create and assign — old Bitmaps already freed
+            CurrentView = factory();
         }
     }
 
     public void NavigateTo(ObservableObject viewModel)
     {
         var oldView = CurrentView;
+        
+        // Dispose old view FIRST to free memory
+        DisposeOldView(oldView);
+        
+        // Now assign — old Bitmaps already freed
         CurrentView = viewModel;
-        DisposeViewAsync(oldView);
     }
 
-    private async void DisposeViewAsync(ObservableObject? view)
+    private void DisposeOldView(ObservableObject? view)
     {
         if (view is IDisposable disposable)
         {
-            await Task.Run(() =>
+            try
             {
-                try
-                {
-                    disposable.Dispose();
-                    Console.WriteLine($"Disposed: {view.GetType().Name}");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error disposing {view.GetType().Name}: {ex.Message}");
-                }
-            });
+                disposable.Dispose();
+                Console.WriteLine($"Disposed: {view.GetType().Name}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error disposing {view.GetType().Name}: {ex.Message}");
+            }
         }
     }
 }

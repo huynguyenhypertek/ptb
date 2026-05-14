@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -17,7 +18,7 @@ namespace PhotoBooth.UI.ViewModels;
 /// <summary>
 /// Screen 8: Select best photos to use in final layout
 /// </summary>
-public partial class PhotoSelectionViewModel : ViewModelBase
+public partial class PhotoSelectionViewModel : ViewModelBase, IDisposable
 {
     [ObservableProperty]
     private ObservableCollection<PhotoItem> _photos = new();
@@ -74,6 +75,9 @@ public partial class PhotoSelectionViewModel : ViewModelBase
 
     public int SelectedCount => Photos.Count(p => p.IsSelected);
 
+    private bool _disposed;
+    private readonly CancellationTokenSource _cts = new();
+
     public PhotoSelectionViewModel(NavigationService navigationService, SessionService sessionService) 
         : base(navigationService, sessionService)
     {
@@ -114,7 +118,9 @@ public partial class PhotoSelectionViewModel : ViewModelBase
         
         try
         {
+            var oldBg = BackgroundImage;
             BackgroundImage = new Bitmap(AssetLoader.Open(new Uri(bgPath)));
+            oldBg?.Dispose();
         }
         catch (Exception ex)
         {
@@ -155,7 +161,9 @@ public partial class PhotoSelectionViewModel : ViewModelBase
         
         try
         {
+            var oldFrame = FramePreviewImage;
             FramePreviewImage = new Bitmap(AssetLoader.Open(new Uri(framePath)));
+            oldFrame?.Dispose();
         }
         catch (Exception ex)
         {
@@ -168,15 +176,22 @@ public partial class PhotoSelectionViewModel : ViewModelBase
         try
         {
             var frameIdStr = bgId.Replace("api_frame_", "");
-            var url = $"https://intellective-unimpinging-greyson.ngrok-free.dev/api/frames/{frameIdStr}/image";
+            var url = $"{DeviceConfig.ApiBaseUrl}/api/frames/{frameIdStr}/image";
             Console.WriteLine($"[PREVIEW] Loading frame from API: {url}");
             
-            using var client = new System.Net.Http.HttpClient();
-            client.DefaultRequestHeaders.Add("ngrok-skip-browser-warning", "1");
-            client.Timeout = TimeSpan.FromSeconds(5);
-            var bytes = await client.GetByteArrayAsync(url);
+            var client = HttpService.Client;
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            // Finding 1: Dispose HttpResponseMessage to prevent connection leak
+            using var response = await client.GetAsync(url, timeoutCts.Token);
+            response.EnsureSuccessStatusCode();
+            // Finding 3/6: Pass cancellation token to body read
+            var bytes = await response.Content.ReadAsByteArrayAsync(timeoutCts.Token);
             using var ms = new MemoryStream(bytes);
-            FramePreviewImage = new Bitmap(ms);
+            var newFrame = new Bitmap(ms);
+            if (_disposed) { newFrame.Dispose(); return; }
+            var oldFrame = FramePreviewImage;
+            FramePreviewImage = newFrame;
+            oldFrame?.Dispose();
             
             Console.WriteLine($"[PREVIEW] Frame loaded OK from API (id={frameIdStr})");
         }
@@ -190,7 +205,11 @@ public partial class PhotoSelectionViewModel : ViewModelBase
                 var fallback = layoutId == "layout6" 
                     ? "avares://PhotoBooth.UI/Assets/finish/nen6_1.png"
                     : "avares://PhotoBooth.UI/Assets/finish/nen2_1.png";
-                FramePreviewImage = new Bitmap(AssetLoader.Open(new Uri(fallback)));
+                var newFallback = new Bitmap(AssetLoader.Open(new Uri(fallback)));
+                if (_disposed) { newFallback.Dispose(); return; }
+                var oldFallback = FramePreviewImage;
+                FramePreviewImage = newFallback;
+                oldFallback?.Dispose();
             }
             catch { }
         }
@@ -201,6 +220,13 @@ public partial class PhotoSelectionViewModel : ViewModelBase
         var paths = SessionService.CurrentSession.CapturedPhotoPaths;
         var layoutId = SessionService.CurrentSession.SelectedLayout?.Id;
         RequiredSelections = SessionService.CurrentSession.SelectedLayout?.SelectCount ?? 2;
+        
+        // Dispose old thumbnails before replacing
+        foreach (var oldPhoto in Photos)
+        {
+            oldPhoto.Thumbnail?.Dispose();
+            oldPhoto.Thumbnail = null;
+        }
         
         Photos = new ObservableCollection<PhotoItem>(
             paths.Select((p, i) => new PhotoItem 
@@ -218,7 +244,11 @@ public partial class PhotoSelectionViewModel : ViewModelBase
         {
             if (File.Exists(path))
             {
-                return new Bitmap(path);
+                using var fileStream = File.OpenRead(path);
+                using var memStream = new MemoryStream();
+                fileStream.CopyTo(memStream);
+                memStream.Position = 0;
+                return new Bitmap(memStream);
             }
         }
         catch (Exception ex)
@@ -267,6 +297,7 @@ public partial class PhotoSelectionViewModel : ViewModelBase
         SessionService.SetSelectedPhotos(selectedIndices);
         
         // Compose photo + frame immediately and save to session folder
+        string? tempFramePath = null;
         try
         {
             var session = SessionService.CurrentSession;
@@ -281,17 +312,18 @@ public partial class PhotoSelectionViewModel : ViewModelBase
             // Determine frame from finish/ folder or API
             var bgId = session.SelectedBackground?.Id;
             var layoutId = session.SelectedLayout?.Id;
-            string tempFramePath = Path.Combine(Path.GetTempPath(), "photobooth_frame.png");
+            tempFramePath = Path.Combine(Path.GetTempPath(), $"photobooth_frame_{Guid.NewGuid():N}.png");
             
             if (bgId != null && bgId.StartsWith("api_frame_"))
             {
                 // Download frame from API
                 var frameIdStr = bgId.Replace("api_frame_", "");
-                var url = $"https://intellective-unimpinging-greyson.ngrok-free.dev/api/frames/{frameIdStr}/image";
+                var url = $"{DeviceConfig.ApiBaseUrl}/api/frames/{frameIdStr}/image";
                 Console.WriteLine($"[COMPOSITE] Downloading frame from API: {url}");
-                using var httpClient = new System.Net.Http.HttpClient();
-                httpClient.DefaultRequestHeaders.Add("ngrok-skip-browser-warning", "1");
-                var bytes = await httpClient.GetByteArrayAsync(url);
+                var httpClient = HttpService.Client;
+                using var dlCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
+                dlCts.CancelAfter(TimeSpan.FromSeconds(15));
+                var bytes = await httpClient.GetByteArrayAsync(url, dlCts.Token);
                 await File.WriteAllBytesAsync(tempFramePath, bytes);
             }
             else
@@ -342,17 +374,18 @@ public partial class PhotoSelectionViewModel : ViewModelBase
             string outputPath = Path.Combine(sessionDir, "final_composite.png");
             
             ImageCompositeService.Compose(tempFramePath, selectedPhotoPaths, positions, outputPath);
+            
             SessionService.SetFinalImage(outputPath);
             
             // Save session data as JSON
             var sessionData = new
             {
-                DeviceId = "device-1",
+                DeviceId = DeviceConfig.DeviceId,
                 LayoutUsed = layoutId ?? "unknown",
                 FrameUsed = SessionService.CurrentSession.SelectedBackground?.Id ?? "unknown",
                 PhotoCount = selectedPhotoPaths.Length,
                 TotalCaptured = allPhotos.Count,
-                CreatedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                CreatedAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
                 FinalImagePath = outputPath
             };
             
@@ -361,31 +394,44 @@ public partial class PhotoSelectionViewModel : ViewModelBase
             File.WriteAllText(jsonPath, json);
             Console.WriteLine($"[SESSION] Data saved: {jsonPath}");
             
-            // Send to API server (fire-and-forget, don't block UI)
+            // Capture ALL session data as locals before fire-and-forget (Finding 8: avoid race with StartNewSession)
+            var capturedDeviceId = DeviceConfig.DeviceId;
+            var capturedStoreId = DeviceConfig.StoreId;
+            var capturedFrameUsed = session.SelectedBackground?.Id ?? "unknown";
+            var capturedApiBaseUrl = DeviceConfig.ApiBaseUrl;
+            var capturedPhotoCount = selectedPhotoPaths.Length;
+            var capturedTotalCaptured = allPhotos.Count;
+            var capturedAmount = layoutId == "layout6" ? DeviceConfig.PriceLayout6 : DeviceConfig.PriceLayout2;
+
+            // Send to API server (fire-and-forget with cancellation)
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    // API-specific data (with DeviceConfig from login)
-                    var amount = layoutId == "layout6" ? 70000m : 50000m;
+                    _cts.Token.ThrowIfCancellationRequested();
                     var apiData = new
                     {
-                        DeviceId = DeviceConfig.DeviceId,
-                        StoreId = DeviceConfig.StoreId,
+                        DeviceId = capturedDeviceId,
+                        StoreId = capturedStoreId,
                         LayoutUsed = layoutId ?? "unknown",
-                        FrameUsed = SessionService.CurrentSession.SelectedBackground?.Id ?? "unknown",
-                        PhotoCount = selectedPhotoPaths.Length,
-                        TotalCaptured = allPhotos.Count,
-                        Amount = amount
+                        FrameUsed = capturedFrameUsed,
+                        PhotoCount = capturedPhotoCount,
+                        TotalCaptured = capturedTotalCaptured,
+                        Amount = capturedAmount
                     };
                     var apiJson = JsonSerializer.Serialize(apiData);
                     
-                    using var httpClient = new System.Net.Http.HttpClient();
-                    httpClient.DefaultRequestHeaders.Add("ngrok-skip-browser-warning", "1");
-                    httpClient.Timeout = TimeSpan.FromSeconds(5);
-                    var content = new System.Net.Http.StringContent(apiJson, System.Text.Encoding.UTF8, "application/json");
-                    var response = await httpClient.PostAsync("https://intellective-unimpinging-greyson.ngrok-free.dev/api/sessions", content);
+                    var httpClient = HttpService.Client;
+                    // Finding 2: Dispose StringContent and HttpResponseMessage to prevent resource leaks
+                    using var content = new System.Net.Http.StringContent(apiJson, System.Text.Encoding.UTF8, "application/json");
+                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
+                    linkedCts.CancelAfter(TimeSpan.FromSeconds(5));
+                    using var response = await httpClient.PostAsync($"{capturedApiBaseUrl}/api/sessions", content, linkedCts.Token);
                     Console.WriteLine($"[API] Session sent: {response.StatusCode}");
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected when disposed before API call completes
                 }
                 catch (Exception apiEx)
                 {
@@ -397,6 +443,14 @@ public partial class PhotoSelectionViewModel : ViewModelBase
         {
             Console.WriteLine($"[ERROR] Failed to compose image: {ex.Message}");
         }
+        finally
+        {
+            // Finding 5: Guaranteed cleanup of temp frame file even on exceptions
+            if (tempFramePath != null)
+            {
+                try { File.Delete(tempFramePath); } catch { }
+            }
+        }
         
         NavigationService.NavigateTo<ConfirmPrintViewModel>();
     }
@@ -405,6 +459,31 @@ public partial class PhotoSelectionViewModel : ViewModelBase
     private void GoBack()
     {
         NavigationService.NavigateTo<CaptureViewModel>();
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        _cts.Cancel();
+        _cts.Dispose();
+        BackgroundImage?.Dispose();
+        BackgroundImage = null;
+        FramePreviewImage?.Dispose();
+        FramePreviewImage = null;
+        
+        foreach (var photo in Photos)
+        {
+            photo.Thumbnail?.Dispose();
+            photo.Thumbnail = null;
+        }
+        
+        // SelectedPhoto1..6 point to the same Thumbnail objects already disposed above
+        SelectedPhoto1 = null;
+        SelectedPhoto2 = null;
+        SelectedPhoto3 = null;
+        SelectedPhoto4 = null;
+        SelectedPhoto5 = null;
+        SelectedPhoto6 = null;
     }
 }
 

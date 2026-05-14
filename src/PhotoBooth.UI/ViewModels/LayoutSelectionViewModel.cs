@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,7 +13,7 @@ namespace PhotoBooth.UI.ViewModels;
 /// <summary>
 /// Screen 2: Layout Selection
 /// </summary>
-public partial class LayoutSelectionViewModel : ViewModelBase
+public partial class LayoutSelectionViewModel : ViewModelBase, IDisposable
 {
     [ObservableProperty]
     private ObservableCollection<Layout> _layouts = new();
@@ -26,6 +27,8 @@ public partial class LayoutSelectionViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _warningMessage = "";
+
+    private readonly CancellationTokenSource _cts = new();
 
     public LayoutSelectionViewModel(NavigationService navigationService, SessionService sessionService) 
         : base(navigationService, sessionService)
@@ -134,7 +137,20 @@ public partial class LayoutSelectionViewModel : ViewModelBase
 
     private async Task ClearWarningAfterDelay()
     {
-        await Task.Delay(3000);
-        WarningMessage = "";
+        try
+        {
+            await Task.Delay(3000, _cts.Token);
+            WarningMessage = "";
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when disposed before delay completes
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
     }
 }

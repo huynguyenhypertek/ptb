@@ -8,6 +8,10 @@ namespace PhotoBooth.UI.ViewModels;
 
 /// <summary>
 /// Screen 3: Frame/Background Selection
+/// WARNING: NOT IN ACTIVE FLOW — This ViewModel is registered in MainWindowViewModel
+/// but never navigated to. BackgroundSelectionViewModel.GoNext() navigates directly
+/// to PaymentAmountViewModel, bypassing this screen entirely.
+/// Kept for potential future use; remove registration if permanently unused.
 /// </summary>
 public partial class FrameSelectionViewModel : ViewModelBase
 {
