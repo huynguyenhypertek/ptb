@@ -41,6 +41,10 @@ public class ApiService
                 Role = result.Role;
                 StoreId = result.StoreId;
                 StoreName = result.StoreName;
+                
+                // Set JWT Authorization header for all subsequent requests
+                _client.DefaultRequestHeaders.Authorization = 
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", Token);
             }
             return result;
         }
