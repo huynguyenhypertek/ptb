@@ -22,7 +22,6 @@ public static class HttpService
     private static readonly Lazy<HttpClient> _client = new(() =>
     {
         var client = new HttpClient();
-        client.DefaultRequestHeaders.Add("ngrok-skip-browser-warning", "1");
         // Global timeout — do NOT change this at runtime (not thread-safe on shared instance).
         // Use per-call CancellationTokenSource for shorter timeouts on specific requests.
         client.Timeout = TimeSpan.FromSeconds(30);

@@ -10,7 +10,7 @@ namespace PhotoBooth.Admin.Services;
 public class ApiService
 {
     private readonly HttpClient _client;
-    public string BaseUrl { get; set; } = "https://intellective-unimpinging-greyson.ngrok-free.dev";
+    public string BaseUrl { get; set; } = "http://localhost:5148";
     
     // Stored after login
     public string? Token { get; set; }
@@ -23,8 +23,6 @@ public class ApiService
     {
         _client = new HttpClient();
         _client.Timeout = TimeSpan.FromSeconds(10);
-        // Required for ngrok free tier to skip browser warning page
-        _client.DefaultRequestHeaders.Add("ngrok-skip-browser-warning", "1");
     }
 
     // Login

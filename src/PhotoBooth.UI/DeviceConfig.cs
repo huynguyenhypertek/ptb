@@ -12,7 +12,7 @@ public static class DeviceConfig
     public static string PlanType { get; set; } = "Pro";  // "Basic" or "Pro"
     public static decimal PriceLayout6 { get; set; } = 70000m;
     public static decimal PriceLayout2 { get; set; } = 50000m;
-    private static string _apiBaseUrl = "https://intellective-unimpinging-greyson.ngrok-free.dev";
+    private static string _apiBaseUrl = "http://localhost:5148";
     public static string ApiBaseUrl
     {
         get => _apiBaseUrl;

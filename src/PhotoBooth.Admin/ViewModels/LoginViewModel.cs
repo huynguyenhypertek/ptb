@@ -92,7 +92,7 @@ public partial class LoginViewModel : ObservableObject
             // Launch PhotoBooth.UI with storeId and deviceId as args
             var process = new Process();
             process.StartInfo.FileName = "dotnet";
-            process.StartInfo.Arguments = $"run --project \"{uiProject}\" -- --storeId={loginResult.StoreId} --deviceId={loginResult.Username} --planType={loginResult.PlanType}";
+            process.StartInfo.Arguments = $"run --project \"{uiProject}\" -- --storeId={loginResult.StoreId} --deviceId={loginResult.Username} --planType={loginResult.PlanType} --apiBaseUrl={_apiService.BaseUrl}";
             process.StartInfo.UseShellExecute = false;
             process.Start();
 
