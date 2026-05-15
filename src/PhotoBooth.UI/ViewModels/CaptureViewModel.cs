@@ -85,15 +85,15 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
         
         LoadCaptureBackground();
         
-        // Create photos directory — use UtcNow + GUID suffix to avoid DST issues and same-second collisions
-        _photosDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
-            "PhotoBooth",
-            $"{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}_{Guid.NewGuid().ToString("N")[..6]}"
-        );
-        
-        // Track directory in session for cleanup
-        SessionService.CurrentSession.SessionDirectory = _photosDirectory;
+        // Use session directory prepared early by BackgroundSelectionViewModel.GoNext()
+        // This gives Google Drive Desktop a head start to detect and sync the folder.
+        // Fallback: create directory here if PrepareSessionDirectory wasn't called
+        if (string.IsNullOrEmpty(SessionService.CurrentSession.SessionDirectory))
+        {
+            SessionService.PrepareSessionDirectory();
+        }
+        _photosDirectory = SessionService.CurrentSession.SessionDirectory!;
+        Directory.CreateDirectory(_photosDirectory); // Ensure it exists
         
         // Initialize camera
         _cameraService = new CameraService();

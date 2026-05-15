@@ -63,30 +63,86 @@ public partial class ThankYouViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            var finalImage = SessionService.CurrentSession.FinalImagePath;
-
-            // Black QR on white background (matching original ThankYouViewModel style)
-            var (qrBitmap, statusText, success) = await QRUploadService.UploadAndGenerateQRAsync(
-                finalImage,
-                foregroundColor: new byte[] { 0, 0, 0 },
-                backgroundColor: new byte[] { 255, 255, 255 },
-                _cts.Token);
-
-            if (_disposed) { qrBitmap?.Dispose(); return; }
-
-            if (success && qrBitmap != null)
+            if (DeviceConfig.GoogleDriveEnabled)
             {
-                var oldQr = QrCodeImage;
-                QrCodeImage = qrBitmap;
-                oldQr?.Dispose();
-                StatusText = statusText;
+                var preFetchedUrl = SessionService.CurrentSession.PreFetchedDriveUrl;
+                
+                if (!string.IsNullOrEmpty(preFetchedUrl))
+                {
+                    // 🚀 Pre-fetched URL available — generate QR instantly!
+                    Console.WriteLine("[QR-ThankYou] Using pre-fetched Drive URL — instant QR!");
+                    using var qrGenerator = new QRCoder.QRCodeGenerator();
+                    var qrData = qrGenerator.CreateQrCode(preFetchedUrl, QRCoder.QRCodeGenerator.ECCLevel.M);
+                    using var qrCode = new QRCoder.PngByteQRCode(qrData);
+                    var qrBytes = qrCode.GetGraphic(20, new byte[] { 0, 0, 0 }, new byte[] { 255, 255, 255 });
+                    
+                    using var ms = new System.IO.MemoryStream(qrBytes);
+                    var qrBitmap = new Avalonia.Media.Imaging.Bitmap(ms);
+                    
+                    if (_disposed) { qrBitmap.Dispose(); return; }
+                    
+                    var oldQr = QrCodeImage;
+                    QrCodeImage = qrBitmap;
+                    oldQr?.Dispose();
+                    StatusText = "📱 Quét mã QR để tải ảnh từ Google Drive";
+                    Console.WriteLine("[QR-ThankYou] Generated successfully (Google Drive - instant)");
+                }
+                else
+                {
+                    // Fallback: pre-fetch didn't complete yet, use retry logic
+                    Console.WriteLine("[QR-ThankYou] Pre-fetch not ready, falling back to retry...");
+                    var folderName = SessionService.CurrentSession.SessionFolderName;
+                    var (qr, status, ok) = await GoogleDriveQRService.WaitSyncAndGenerateQRAsync(
+                        folderName ?? "",
+                        foregroundColor: new byte[] { 0, 0, 0 },
+                        backgroundColor: new byte[] { 255, 255, 255 },
+                        onStatusUpdate: msg => StatusText = msg,
+                        ct: _cts.Token
+                    );
+
+                    if (_disposed) { qr?.Dispose(); return; }
+
+                    if (ok && qr != null)
+                    {
+                        var oldQr = QrCodeImage;
+                        QrCodeImage = qr;
+                        oldQr?.Dispose();
+                        StatusText = status;
+                        Console.WriteLine("[QR-ThankYou] Generated successfully (Google Drive)");
+                    }
+                    else
+                    {
+                        StatusText = status;
+                        Console.WriteLine($"[QR-ThankYou] Google Drive QR failed: {status}");
+                    }
+                }
             }
             else
             {
-                StatusText = statusText;
-            }
+                // Giữ nguyên logic QRUploadService hiện tại
+                var finalImage = SessionService.CurrentSession.FinalImagePath;
+                var (qrBitmap, statusText, success) = await QRUploadService.UploadAndGenerateQRAsync(
+                    finalImage,
+                    foregroundColor: new byte[] { 0, 0, 0 },
+                    backgroundColor: new byte[] { 255, 255, 255 },
+                    _cts.Token);
 
-            Console.WriteLine($"[QR] Generated successfully");
+                if (_disposed) { qrBitmap?.Dispose(); return; }
+
+                if (success && qrBitmap != null)
+                {
+                    var oldQr = QrCodeImage;
+                    QrCodeImage = qrBitmap;
+                    oldQr?.Dispose();
+                    StatusText = statusText;
+                    Console.WriteLine("[QR-ThankYou] Generated successfully (ngrok)");
+                }
+                else
+                {
+                    StatusText = statusText;
+                    Console.WriteLine($"[QR-ThankYou] Upload failed: {statusText}");
+                }
+            }
         }
         catch (OperationCanceledException)
         {
@@ -94,7 +150,8 @@ public partial class ThankYouViewModel : ViewModelBase, IDisposable
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[QR] Error: {ex.Message}");
+            // Don't log ex.Message — may contain full AppsScript URL with deployment key
+            Console.WriteLine($"[QR-ThankYou] Error: {ex.GetType().Name}");
             StatusText = "❌ Lỗi kết nối";
         }
     }

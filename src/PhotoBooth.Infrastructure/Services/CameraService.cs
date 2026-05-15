@@ -44,8 +44,8 @@ public class CameraService : ICameraService
                 }
                 
                 // Set camera properties - use lower resolution for preview to reduce CPU
-                _capture.Set(VideoCaptureProperties.FrameWidth, 1280);
-                _capture.Set(VideoCaptureProperties.FrameHeight, 720);
+                _capture.Set(VideoCaptureProperties.FrameWidth, 1920);
+                _capture.Set(VideoCaptureProperties.FrameHeight, 1080);
                 _capture.Set(VideoCaptureProperties.Fps, 30);
                 
                 Console.WriteLine($"Camera initialized: {_capture.FrameWidth}x{_capture.FrameHeight}");

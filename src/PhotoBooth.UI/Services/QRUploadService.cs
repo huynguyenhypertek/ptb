@@ -65,7 +65,7 @@ public static class QRUploadService
 
         // Generate QR code pointing to download page
         var downloadUrl = $"{apiBase}/photos/{result.code}";
-        Console.WriteLine($"[QR] Download URL: {downloadUrl}");
+        Console.WriteLine("[QR] Download URL generated");
 
         using var qrGenerator = new QRCodeGenerator();
         var qrData = qrGenerator.CreateQrCode(downloadUrl, QRCodeGenerator.ECCLevel.M);
@@ -75,7 +75,7 @@ public static class QRUploadService
         using var ms = new MemoryStream(qrBytes);
         var qrBitmap = new Bitmap(ms);
 
-        Console.WriteLine($"[QR] Generated successfully for: {downloadUrl}");
+        Console.WriteLine("[QR] Generated successfully");
         return (qrBitmap, "📱 Quét mã QR để tải ảnh", true);
     }
 }

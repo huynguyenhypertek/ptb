@@ -45,25 +45,27 @@
 
                 <!-- State 1: QR Code Screen (nen10.5) -->
                 <Grid IsVisible="{Binding ShowQRScreen}">
-                    <!-- QR Code Image -->
-                    <Border Background="White" 
-                            Width="300" Height="300" 
-                            CornerRadius="16"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Margin="0,0,0,50">
-                        <Image Source="{Binding QrCodeImage}" 
-                               Width="280" Height="280"
-                               Stretch="Uniform"/>
-                    </Border>
-                    
-                    <!-- Status text -->
-                    <TextBlock Text="{Binding StatusText}" 
-                               FontSize="24" FontWeight="Bold"
-                               Foreground="White"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"
-                               Margin="0,350,0,0"/>
+                    <!-- QR + Status stacked vertically, never overlap -->
+                    <StackPanel HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Spacing="20">
+                        <!-- QR Code Image -->
+                        <Border Background="White" 
+                                Width="300" Height="300" 
+                                CornerRadius="16"
+                                HorizontalAlignment="Center">
+                            <Image Source="{Binding QrCodeImage}" 
+                                   Width="280" Height="280"
+                                   Stretch="Uniform"/>
+                        </Border>
+                        
+                        <!-- Status text — always below QR -->
+                        <TextBlock Text="{Binding StatusText}" 
+                                   FontSize="24" FontWeight="Bold"
+                                   Foreground="White"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center"/>
+                    </StackPanel>
 
                     <!-- Next button -->
                     <Button Command="{Binding GoToThankYouCommand}"

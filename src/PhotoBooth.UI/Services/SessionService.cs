@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using PhotoBooth.Core.Models;
 
 namespace PhotoBooth.UI.Services;
@@ -11,12 +14,25 @@ namespace PhotoBooth.UI.Services;
 public class SessionService
 {
     /// <summary>
-    /// Base directory for all session folders: MyPictures/PhotoBooth/
+    /// Base directory for all session folders.
+    /// Returns Google Drive path when enabled and accessible, otherwise ~/Pictures/PhotoBooth/.
+    /// Validates Directory.Exists so fallback is consistent across SessionService and CaptureViewModel.
     /// </summary>
-    private static readonly string SessionsBaseDirectory = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
-        "PhotoBooth"
-    );
+    private static string SessionsBaseDirectory
+    {
+        get
+        {
+            if (DeviceConfig.GoogleDriveEnabled && !string.IsNullOrEmpty(DeviceConfig.GoogleDrivePath))
+            {
+                if (Directory.Exists(DeviceConfig.GoogleDrivePath))
+                {
+                    return DeviceConfig.GoogleDrivePath;
+                }
+                Console.WriteLine($"[WARNING] Google Drive path not found: {DeviceConfig.GetMaskedGDrivePath()} — falling back to local storage");
+            }
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "PhotoBooth");
+        }
+    }
 
     /// <summary>
     /// Any directory creation date before this is considered invalid/unsupported.
@@ -25,17 +41,79 @@ public class SessionService
     /// </summary>
     private static readonly DateTime MinValidDate = new(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-    /// <summary>
-    /// Tracks the previous session's directory path explicitly so cleanup works
-    /// even if CurrentSession.SessionDirectory was never set (Finding 3).
-    /// </summary>
-    private string? _previousSessionDir;
-
     public Session CurrentSession { get; private set; } = new();
 
     public void StartNewSession()
     {
         CurrentSession = new Session();
+    }
+
+    /// <summary>
+    /// Creates the session directory on disk early (before capture starts).
+    /// Call this as soon as layout/background are selected so Google Drive Desktop
+    /// has more time to detect and sync the empty folder to the cloud.
+    /// Also starts background pre-fetch of Google Drive URL for instant QR generation.
+    /// </summary>
+    public void PrepareSessionDirectory()
+    {
+        var sessionFolder = $"{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}_{Guid.NewGuid().ToString("N")[..6]}";
+        var basePath = GetSessionsBaseDirectory();
+        var fullPath = Path.Combine(basePath, sessionFolder);
+        Directory.CreateDirectory(fullPath);
+
+        CurrentSession.SessionDirectory = fullPath;
+        CurrentSession.SessionFolderName = sessionFolder;
+
+        Console.WriteLine($"[SESSION] Directory prepared early: {sessionFolder}");
+
+        // Start background pre-fetch of Google Drive URL during payment/capture screens
+        if (DeviceConfig.GoogleDriveEnabled && !string.IsNullOrEmpty(DeviceConfig.AppsScriptUrl))
+        {
+            _ = PreFetchDriveUrlAsync(sessionFolder);
+        }
+    }
+
+    /// <summary>
+    /// Background task: polls Apps Script until folder appears on Google Drive,
+    /// then caches the URL in Session.PreFetchedDriveUrl for instant QR generation.
+    /// Runs during payment/capture screens (~20-30s before QR screen).
+    /// </summary>
+    private async Task PreFetchDriveUrlAsync(string sessionFolderName)
+    {
+        const int maxAttempts = 20; // More attempts since we have more time
+        const int delayMs = 3000;
+
+        var client = HttpService.Client;
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                var separator = DeviceConfig.AppsScriptUrl.Contains('?') ? "&" : "?";
+                var url = $"{DeviceConfig.AppsScriptUrl}{separator}folder={Uri.EscapeDataString(sessionFolderName)}";
+
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var json = await client.GetStringAsync(url, cts.Token);
+                var result = System.Text.Json.JsonSerializer.Deserialize<AppsScriptResponse>(json);
+
+                if (result?.Success == true && !string.IsNullOrEmpty(result.Url))
+                {
+                    CurrentSession.PreFetchedDriveUrl = result.Url;
+                    Console.WriteLine($"[SESSION] Pre-fetched Drive URL at attempt {attempt}");
+                    return;
+                }
+
+                Console.WriteLine($"[SESSION] Pre-fetch attempt {attempt}: folder not on cloud yet");
+            }
+            catch (Exception)
+            {
+                Console.WriteLine($"[SESSION] Pre-fetch attempt {attempt}: request failed");
+            }
+
+            await Task.Delay(delayMs);
+        }
+
+        Console.WriteLine("[SESSION] Pre-fetch exhausted — ThankYou will retry");
     }
 
     public void SetLayout(Layout layout)
@@ -87,39 +165,6 @@ public class SessionService
     /// Returns the base directory where all session folders are stored.
     /// </summary>
     public static string GetSessionsBaseDirectory() => SessionsBaseDirectory;
-
-    /// <summary>
-    /// Deletes the previous session's directory (if it exists and is safe to delete).
-    /// Called automatically at the start of StartNewSession().
-    /// Skips deletion if FinalImagePath still exists (upload may be in-flight) — defers to stale sweep.
-    /// </summary>
-    /// <param name="previousFinalImage">The FinalImagePath from the previous session, captured BEFORE CurrentSession is replaced.</param>
-    private void CleanupPreviousSession(string? previousFinalImage)
-    {
-        var sessionDir = _previousSessionDir;
-        if (string.IsNullOrEmpty(sessionDir) || !Directory.Exists(sessionDir))
-            return;
-
-        // If a final image still exists inside the session dir, an in-flight upload may be reading it.
-        // Defer cleanup to the stale-session sweep at next startup.
-        if (!string.IsNullOrEmpty(previousFinalImage)
-            && File.Exists(previousFinalImage)
-            && previousFinalImage.StartsWith(sessionDir, StringComparison.Ordinal))
-        {
-            Console.WriteLine($"[CLEANUP] Deferred cleanup of {sessionDir} — FinalImagePath still exists (possible in-flight upload)");
-            return;
-        }
-
-        try
-        {
-            Directory.Delete(sessionDir, recursive: true);
-            Console.WriteLine($"[CLEANUP] Deleted previous session: {sessionDir}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[CLEANUP] Failed to delete {sessionDir}: {ex.Message}");
-        }
-    }
 
     /// <summary>
     /// Returns the best available UTC timestamp for the directory's age.

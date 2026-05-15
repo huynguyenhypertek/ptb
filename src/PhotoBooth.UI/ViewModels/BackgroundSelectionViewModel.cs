@@ -225,6 +225,9 @@ public partial class BackgroundSelectionViewModel : ViewModelBase, IDisposable
         Console.WriteLine($"GoNext called, SelectedBackground: {SelectedBackground?.Name ?? "null"}");
         if (SelectedBackground != null)
         {
+            // Create session folder early so Google Drive Desktop can start syncing
+            // before user reaches QR screen (~15-20s ahead)
+            SessionService.PrepareSessionDirectory();
             Console.WriteLine("Navigating to PaymentAmountViewModel...");
             NavigationService.NavigateTo<PaymentAmountViewModel>();
         }

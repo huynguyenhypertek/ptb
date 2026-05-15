@@ -21,6 +21,16 @@ public class Session
     /// Set by CaptureViewModel when creating the session folder.
     /// </summary>
     public string? SessionDirectory { get; set; }
+    /// <summary>
+    /// Tên folder session (chỉ tên, không phải full path).
+    /// Dùng để Google Apps Script tìm folder trên Drive.
+    /// </summary>
+    public string? SessionFolderName { get; set; }
+    /// <summary>
+    /// Google Drive folder URL pre-fetched in background during payment/capture.
+    /// If set, ThankYouViewModel uses this directly instead of calling Apps Script again.
+    /// </summary>
+    public string? PreFetchedDriveUrl { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 

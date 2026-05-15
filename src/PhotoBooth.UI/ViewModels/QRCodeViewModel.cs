@@ -37,27 +37,58 @@ public partial class QRCodeViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            var finalImage = SessionService.CurrentSession.FinalImagePath;
-
-            // White QR on dark background (matching original QRCodeViewModel style)
-            var (qrBitmap, statusText, success) = await QRUploadService.UploadAndGenerateQRAsync(
-                finalImage,
-                foregroundColor: new byte[] { 255, 255, 255 },
-                backgroundColor: new byte[] { 30, 30, 46 },
-                _cts.Token);
-
-            if (_disposed) { qrBitmap?.Dispose(); return; }
-
-            if (success && qrBitmap != null)
+            if (DeviceConfig.GoogleDriveEnabled)
             {
-                var oldQr = QrCodeImage;
-                QrCodeImage = qrBitmap;
-                oldQr?.Dispose();
-                StatusText = statusText;
+                var folderName = SessionService.CurrentSession.SessionFolderName;
+                var (qr, status, ok) = await GoogleDriveQRService.WaitSyncAndGenerateQRAsync(
+                    folderName ?? "",
+                    foregroundColor: new byte[] { 255, 255, 255 },
+                    backgroundColor: new byte[] { 30, 30, 46 },
+                    onStatusUpdate: msg => StatusText = msg,
+                    ct: _cts.Token
+                );
+
+                if (_disposed) { qr?.Dispose(); return; }
+
+                if (ok && qr != null)
+                {
+                    var oldQr = QrCodeImage;
+                    QrCodeImage = qr;
+                    oldQr?.Dispose();
+                    StatusText = status;
+                    Console.WriteLine("[QR] Generated successfully (Google Drive)");
+                }
+                else
+                {
+                    StatusText = status;
+                    Console.WriteLine($"[QR] Google Drive QR failed: {status}");
+                }
             }
             else
             {
-                StatusText = statusText;
+                // Giữ nguyên logic QRUploadService hiện tại
+                var finalImage = SessionService.CurrentSession.FinalImagePath;
+                var (qrBitmap, statusText, success) = await QRUploadService.UploadAndGenerateQRAsync(
+                    finalImage,
+                    foregroundColor: new byte[] { 255, 255, 255 },
+                    backgroundColor: new byte[] { 30, 30, 46 },
+                    _cts.Token);
+
+                if (_disposed) { qrBitmap?.Dispose(); return; }
+
+                if (success && qrBitmap != null)
+                {
+                    var oldQr = QrCodeImage;
+                    QrCodeImage = qrBitmap;
+                    oldQr?.Dispose();
+                    StatusText = statusText;
+                    Console.WriteLine("[QR] Generated successfully (ngrok)");
+                }
+                else
+                {
+                    StatusText = statusText;
+                    Console.WriteLine($"[QR] Upload failed: {statusText}");
+                }
             }
 
             IsUploading = false;
@@ -65,10 +96,12 @@ public partial class QRCodeViewModel : ViewModelBase, IDisposable
         catch (OperationCanceledException)
         {
             // Expected when disposed during upload
+            IsUploading = false;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[QR] Error: {ex.Message}");
+            // Don't log ex.Message — may contain full AppsScript URL with deployment key
+            Console.WriteLine($"[QR] Error: {ex.GetType().Name}");
             StatusText = "❌ Lỗi kết nối. Thử lại sau.";
             IsUploading = false;
         }
