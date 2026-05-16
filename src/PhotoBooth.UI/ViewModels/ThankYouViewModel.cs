@@ -10,7 +10,7 @@ namespace PhotoBooth.UI.ViewModels;
 
 /// <summary>
 /// Screen 11: Thank You with QR Code
-/// State 1: nen10.5.png — shows QR code for photo download
+/// State 1: nen10.5.png — shows QR code for photo download (or offline fallback)
 /// State 2: nen11.png — shows "Về MH chính" button  
 /// State 3: nen11 xac nhan — confirmation to return
 /// </summary>
@@ -33,6 +33,18 @@ public partial class ThankYouViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty]
     private bool _showConfirmation = false; // State 3: Confirm return
+
+    /// <summary>
+    /// True when the device is offline — shows offline fallback UI with sequential number.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isOffline;
+
+    /// <summary>
+    /// D2: Shows sequential number or fallback "---" when unavailable.
+    /// </summary>
+    [ObservableProperty]
+    private string _sequentialNumber = "";
 
     private bool _disposed;
     private readonly CancellationTokenSource _cts = new();
@@ -63,6 +75,21 @@ public partial class ThankYouViewModel : ViewModelBase, IDisposable
     {
         try
         {
+            // D2: Get sequential number early — fallback to "---" if unavailable
+            SequentialNumber = SessionService.CurrentSession.SequentialNumber ?? "---";
+
+            // Check mạng trước khi gọi API
+            var isOnline = await NetworkCheckService.IsOnlineAsync();
+
+            if (!isOnline)
+            {
+                // OFFLINE MODE: hiện thông báo liên hệ nhân viên
+                Console.WriteLine($"[QR-ThankYou] Offline mode — seq: {SequentialNumber}");
+                IsOffline = true;
+                StatusText = "📴 Không có kết nối mạng";
+                return;
+            }
+
             if (DeviceConfig.GoogleDriveEnabled)
             {
                 var preFetchedUrl = SessionService.CurrentSession.PreFetchedDriveUrl;
@@ -146,13 +173,27 @@ public partial class ThankYouViewModel : ViewModelBase, IDisposable
         }
         catch (OperationCanceledException)
         {
+            if (!_cts.IsCancellationRequested)
+            {
+                // Timeout during HTTP request -> activate offline mode
+                Console.WriteLine($"[QR-ThankYou] Timeout detected -> Offline mode");
+                NetworkCheckService.ResetCache();
+                SequentialNumber = SessionService.CurrentSession.SequentialNumber ?? "---";
+                IsOffline = true;
+                StatusText = "📴 Lỗi kết nối mạng";
+            }
             // Expected when disposed during upload
         }
         catch (Exception ex)
         {
+            // D4: Network error during API call → also activate offline mode
             // Don't log ex.Message — may contain full AppsScript URL with deployment key
             Console.WriteLine($"[QR-ThankYou] Error: {ex.GetType().Name}");
-            StatusText = "❌ Lỗi kết nối";
+            // F2: Invalidate cache so downstream callers see offline immediately
+            NetworkCheckService.ResetCache();
+            SequentialNumber = SessionService.CurrentSession.SequentialNumber ?? "---";
+            IsOffline = true;
+            StatusText = "📴 Lỗi kết nối mạng";
         }
     }
 

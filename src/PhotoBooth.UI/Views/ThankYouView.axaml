@@ -43,12 +43,14 @@
         <Viewbox Stretch="Uniform">
             <Grid Width="1920" Height="1080">
 
-                <!-- State 1: QR Code Screen (nen10.5) -->
+                <!-- State 1: QR Code Screen (nen10.5) — ONLINE only -->
                 <Grid IsVisible="{Binding ShowQRScreen}">
-                    <!-- QR + Status stacked vertically, never overlap -->
+
+                    <!-- Online QR Content (hidden when offline) -->
                     <StackPanel HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
-                                Spacing="20">
+                                Spacing="20"
+                                IsVisible="{Binding !IsOffline}">
                         <!-- QR Code Image -->
                         <Border Background="White" 
                                 Width="300" Height="300" 
@@ -67,16 +69,68 @@
                                    TextAlignment="Center"/>
                     </StackPanel>
 
-                    <!-- Next button -->
+                    <!-- D3: Next button — hidden when offline -->
                     <Button Command="{Binding GoToThankYouCommand}"
                             Classes="ImageBtn"
                             Width="200"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Bottom"
                             Margin="0,0,100,80"
-                            Cursor="Hand">
+                            Cursor="Hand"
+                            IsVisible="{Binding !IsOffline}">
                         <Image Source="/Assets/buttons/next.png"/>
                     </Button>
+
+                    <!-- Offline Fallback UI (replaces QR content) -->
+                    <StackPanel IsVisible="{Binding IsOffline}"
+                                VerticalAlignment="Center" HorizontalAlignment="Center" 
+                                Spacing="25">
+                        
+                        <TextBlock Text="📴 Mất kết nối mạng" 
+                                   FontSize="36" FontWeight="Bold" 
+                                   Foreground="#FFA500"
+                                   HorizontalAlignment="Center"/>
+                        
+                        <!-- Mã số ảnh nổi bật -->
+                        <Border Background="#0f3460" CornerRadius="15" Padding="30,20"
+                                HorizontalAlignment="Center">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="MÃ SỐ ẢNH CỦA BẠN" 
+                                           FontSize="18" Foreground="#888"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding SequentialNumber}" 
+                                           FontSize="64" FontWeight="Bold" 
+                                           Foreground="#00d4ff"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Thông báo liên hệ nhân viên -->
+                        <Border Background="#1e1e3a" CornerRadius="15" Padding="30,20"
+                                HorizontalAlignment="Center">
+                            <TextBlock Text="Vui lòng liên hệ nhân viên hỗ trợ để nhận ảnh" 
+                                       FontSize="24" FontWeight="SemiBold"
+                                       Foreground="White"
+                                       HorizontalAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center"/>
+                        </Border>
+                        
+                        <TextBlock Text="Ảnh đã được lưu và sẽ tự đồng bộ khi có mạng ✅" 
+                                   FontSize="16" Foreground="#666"
+                                   HorizontalAlignment="Center"/>
+
+                        <!-- F1: Offline → go directly to start (skip 3-state ceremony) -->
+                        <Button Command="{Binding ReturnToStartCommand}"
+                                Content="🏠 Về màn hình chính"
+                                Width="350" Height="70"
+                                Background="#e94560"
+                                Foreground="White"
+                                FontSize="22"
+                                FontWeight="Bold"
+                                CornerRadius="15"
+                                HorizontalContentAlignment="Center"/>
+                    </StackPanel>
                 </Grid>
 
                 <!-- State 2: Thank You (nen11) — MHchinh button at bottom-right -->

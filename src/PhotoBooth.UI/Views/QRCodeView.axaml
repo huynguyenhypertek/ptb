@@ -9,8 +9,9 @@
 
     <Grid Background="#1a1a2e">
         
-        <!-- Main Content -->
-        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="30">
+        <!-- Online Content (hidden when offline) -->
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="30"
+                    IsVisible="{Binding !IsOffline}">
             
             <TextBlock Text="✓ IN ẢNH THÀNH CÔNG!" 
                        FontSize="42" 
@@ -51,6 +52,56 @@
                     CornerRadius="15"
                     HorizontalContentAlignment="Center"
                     Margin="0,20,0,0"/>
+        </StackPanel>
+
+        <!-- Offline Fallback UI -->
+        <StackPanel IsVisible="{Binding IsOffline}"
+                    VerticalAlignment="Center" HorizontalAlignment="Center" 
+                    Spacing="25">
+            
+            <TextBlock Text="📴 Mất kết nối mạng" 
+                       FontSize="36" FontWeight="Bold" 
+                       Foreground="#FFA500"
+                       HorizontalAlignment="Center"/>
+            
+            <!-- Mã số ảnh nổi bật -->
+            <Border Background="#0f3460" CornerRadius="15" Padding="30,20"
+                    HorizontalAlignment="Center">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="MÃ SỐ ẢNH CỦA BẠN" 
+                               FontSize="18" Foreground="#888"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding SequentialNumber}" 
+                               FontSize="64" FontWeight="Bold" 
+                               Foreground="#00d4ff"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+            
+            <!-- Thông báo liên hệ nhân viên -->
+            <Border Background="#1e1e3a" CornerRadius="15" Padding="30,20"
+                    HorizontalAlignment="Center">
+                <TextBlock Text="Vui lòng liên hệ nhân viên hỗ trợ để nhận ảnh" 
+                           FontSize="24" FontWeight="SemiBold"
+                           Foreground="White"
+                           HorizontalAlignment="Center"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"/>
+            </Border>
+            
+            <TextBlock Text="Ảnh đã được lưu và sẽ tự đồng bộ khi có mạng ✅" 
+                       FontSize="16" Foreground="#666"
+                       HorizontalAlignment="Center"/>
+            
+            <Button Command="{Binding ShowReturnCommand}"
+                    Content="🏠 Về màn hình chính"
+                    Width="350" Height="70"
+                    Background="#e94560"
+                    Foreground="White"
+                    FontSize="22"
+                    FontWeight="Bold"
+                    CornerRadius="15"
+                    HorizontalContentAlignment="Center"/>
         </StackPanel>
         
         <!-- Return Popup Overlay -->

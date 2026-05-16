@@ -31,6 +31,11 @@ public class Session
     /// If set, ThankYouViewModel uses this directly instead of calling Apps Script again.
     /// </summary>
     public string? PreFetchedDriveUrl { get; set; }
+    /// <summary>
+    /// Mã số thứ tự của session (ví dụ: "0516-001").
+    /// Dùng để in lên ảnh và để khách nhận diện khi liên hệ lấy ảnh offline.
+    /// </summary>
+    public string? SequentialNumber { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 

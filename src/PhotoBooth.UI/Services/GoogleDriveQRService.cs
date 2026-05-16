@@ -77,11 +77,14 @@ public static class GoogleDriveQRService
                 // Folder chưa sync xong, chờ rồi thử lại
                 Console.WriteLine($"[GDRIVE] Attempt {attempt}: folder not found yet, retrying in {RetryDelayMs}ms");
             }
-            catch (OperationCanceledException) { throw; } // F4: Don't swallow cancellation
-            catch (Exception)
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) 
+            { 
+                throw; // F4: Only throw if parent cancellation (ViewModel disposed)
+            }
+            catch (Exception ex)
             {
-                // F2: Don't log ex.Message — HttpRequestException includes full URL with deployment key
-                Console.WriteLine($"[GDRIVE] Attempt {attempt}: request failed, retrying...");
+                // Handle both HttpRequestException and timeout TaskCanceledException
+                Console.WriteLine($"[GDRIVE] Attempt {attempt}: request failed ({ex.GetType().Name}), retrying...");
             }
 
             if (attempt < MaxRetries)

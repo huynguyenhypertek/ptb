@@ -9,6 +9,7 @@ namespace PhotoBooth.UI.ViewModels;
 
 /// <summary>
 /// Screen 12: QR Code to download photos on phone
+/// Supports offline fallback: shows sequential number + contact message when network is down.
 /// </summary>
 public partial class QRCodeViewModel : ViewModelBase, IDisposable
 {
@@ -24,6 +25,18 @@ public partial class QRCodeViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool _showReturnPopup;
 
+    /// <summary>
+    /// True when the device is offline — shows offline fallback UI with sequential number.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isOffline;
+
+    /// <summary>
+    /// D2: Shows sequential number or fallback "---" when unavailable.
+    /// </summary>
+    [ObservableProperty]
+    private string _sequentialNumber = "";
+
     private bool _disposed;
     private readonly CancellationTokenSource _cts = new();
 
@@ -37,6 +50,22 @@ public partial class QRCodeViewModel : ViewModelBase, IDisposable
     {
         try
         {
+            // D2: Get sequential number early — fallback to "---" if unavailable
+            SequentialNumber = SessionService.CurrentSession.SequentialNumber ?? "---";
+
+            // Check mạng trước khi gọi API
+            var isOnline = await NetworkCheckService.IsOnlineAsync();
+
+            if (!isOnline)
+            {
+                // OFFLINE MODE: hiện thông báo liên hệ nhân viên
+                Console.WriteLine($"[QR] Offline mode — seq: {SequentialNumber}");
+                IsOffline = true;
+                IsUploading = false;
+                StatusText = "📴 Không có kết nối mạng";
+                return;
+            }
+
             if (DeviceConfig.GoogleDriveEnabled)
             {
                 var folderName = SessionService.CurrentSession.SessionFolderName;
@@ -95,14 +124,28 @@ public partial class QRCodeViewModel : ViewModelBase, IDisposable
         }
         catch (OperationCanceledException)
         {
+            if (!_cts.IsCancellationRequested)
+            {
+                // Timeout during HTTP request -> activate offline mode
+                Console.WriteLine($"[QR] Timeout detected -> Offline mode");
+                NetworkCheckService.ResetCache();
+                SequentialNumber = SessionService.CurrentSession.SequentialNumber ?? "---";
+                IsOffline = true;
+                StatusText = "📴 Lỗi kết nối mạng";
+            }
             // Expected when disposed during upload
             IsUploading = false;
         }
         catch (Exception ex)
         {
+            // D4: Network error during API call → also activate offline mode
             // Don't log ex.Message — may contain full AppsScript URL with deployment key
             Console.WriteLine($"[QR] Error: {ex.GetType().Name}");
-            StatusText = "❌ Lỗi kết nối. Thử lại sau.";
+            // F2: Invalidate cache so downstream callers see offline immediately
+            NetworkCheckService.ResetCache();
+            SequentialNumber = SessionService.CurrentSession.SequentialNumber ?? "---";
+            IsOffline = true;
+            StatusText = "📴 Lỗi kết nối mạng";
             IsUploading = false;
         }
     }

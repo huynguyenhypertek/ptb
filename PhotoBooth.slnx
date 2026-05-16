@@ -4,4 +4,7 @@
     <Project Path="src/PhotoBooth.Infrastructure/PhotoBooth.Infrastructure.csproj" />
     <Project Path="src/PhotoBooth.UI/PhotoBooth.UI.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PhotoBooth.Tests/PhotoBooth.Tests.csproj" />
+  </Folder>
 </Solution>

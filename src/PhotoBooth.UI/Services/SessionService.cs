@@ -66,6 +66,22 @@ public class SessionService
 
         Console.WriteLine($"[SESSION] Directory prepared early: {sessionFolder}");
 
+        // Gán mã số thứ tự cho session (chỉ gán nếu chưa có — tránh double-assignment)
+        if (string.IsNullOrEmpty(CurrentSession.SequentialNumber))
+        {
+            try
+            {
+                CurrentSession.SequentialNumber = SequentialNumberService.GetNextNumber();
+                Console.WriteLine($"[SESSION] Sequential number: {CurrentSession.SequentialNumber}");
+            }
+            catch (Exception ex)
+            {
+                // F1: SaveState now throws on persistence failure (disk full, permissions, etc.)
+                // Session continues without sequential number — better than crash or duplicate
+                Console.WriteLine($"[SESSION] WARNING: Failed to assign sequential number: {ex.Message}");
+            }
+        }
+
         // Start background pre-fetch of Google Drive URL during payment/capture screens
         if (DeviceConfig.GoogleDriveEnabled && !string.IsNullOrEmpty(DeviceConfig.AppsScriptUrl))
         {

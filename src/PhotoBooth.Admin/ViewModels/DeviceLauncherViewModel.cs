@@ -39,7 +39,7 @@ public partial class DeviceLauncherViewModel : ObservableObject
     private readonly ApiService _apiService;
 
     [ObservableProperty]
-    private ObservableCollection<DeviceLaunchItem> _devices = new();
+    private ObservableCollection<DeviceLaunchItem> _devices = [];
 
     [ObservableProperty]
     private bool _isLoading;
@@ -121,7 +121,7 @@ public partial class DeviceLauncherViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task LaunchDevice(DeviceLaunchItem? item)
+    private void LaunchDevice(DeviceLaunchItem? item)
     {
         if (item == null) return;
 
@@ -257,7 +257,7 @@ public partial class DeviceLauncherViewModel : ObservableObject
         }
     }
 
-    private async Task MonitorProcessAsync(DeviceLaunchItem item, Process process)
+    private static async Task MonitorProcessAsync(DeviceLaunchItem item, Process process)
     {
         try
         {
