@@ -27,6 +27,9 @@
         <DataTemplate DataType="{x:Type vm:FrameListViewModel}">
             <views:FrameListView />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:DeviceLauncherViewModel}">
+            <views:DeviceLauncherView />
+        </DataTemplate>
     </Window.DataTemplates>
 
     <Panel>
@@ -73,6 +76,10 @@
                                 Background="{Binding CardBg}" Foreground="{Binding TextColor}" Margin="0,5"
                                 CornerRadius="8"/>
                         <Button Content="📋  Lượt chụp" Command="{Binding ShowSessionsCommand}"
+                                HorizontalAlignment="Stretch" Padding="12,10"
+                                Background="{Binding CardBg}" Foreground="{Binding TextColor}" Margin="0,5"
+                                CornerRadius="8"/>
+                        <Button Content="🚀  PhotoBooth" Command="{Binding ShowDeviceLauncherCommand}"
                                 HorizontalAlignment="Stretch" Padding="12,10"
                                 Background="{Binding CardBg}" Foreground="{Binding TextColor}" Margin="0,5"
                                 CornerRadius="8"/>

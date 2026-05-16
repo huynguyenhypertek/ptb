@@ -117,7 +117,9 @@ using (var scope = app.Services.CreateScope())
         Directory.CreateDirectory(uploadsDir);
         
         // Copy default frames from UI assets
-        var uiAssetsDir = Path.Combine(app.Environment.ContentRootPath, "..", "PhotoBooth.UI", "Assets", "frames");
+        // Use finish/ frames (with transparent photo holes) instead of frames/ (opaque)
+        // This ensures API-served frames work correctly for preview overlay and composition
+        var uiAssetsDir = Path.Combine(app.Environment.ContentRootPath, "..", "PhotoBooth.UI", "Assets", "finish");
         var defaultFrames = new[]
         {
             new { Name = "Khung 2 ảnh - Mẫu 1", Layout = "layout2", File = "nen2_1.png" },

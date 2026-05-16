@@ -130,6 +130,12 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void ShowDeviceLauncher()
+    {
+        CurrentView = new DeviceLauncherViewModel(_apiService);
+    }
+
+    [RelayCommand]
     private void Logout()
     {
         IsLoggedIn = false;

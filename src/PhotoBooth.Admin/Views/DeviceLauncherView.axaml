@@ -1,0 +1,115 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoBooth.Admin.ViewModels"
+             x:Class="PhotoBooth.Admin.Views.DeviceLauncherView"
+             x:DataType="vm:DeviceLauncherViewModel">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#1e1e2e" CornerRadius="12" Padding="20" Margin="0,0,0,15">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                    <TextBlock Text="🚀 Khởi động Photobooth" FontSize="24" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock Text="Chọn thiết bị để khởi động phần mềm PhotoBooth" 
+                               FontSize="13" Foreground="#888" Margin="0,4,0,0"/>
+                </StackPanel>
+                <Button Grid.Column="1" Content="🔄 Tải lại" Command="{Binding LoadDevicesCommand}"
+                        Background="#7c3aed" Foreground="White" Padding="16,10" CornerRadius="8"
+                        VerticalAlignment="Center" FontWeight="Bold"/>
+            </Grid>
+        </Border>
+
+        <!-- Device List -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="8">
+                <!-- Loading Indicator -->
+                <TextBlock Text="⏳ Đang tải..." FontSize="16" Foreground="#888"
+                           HorizontalAlignment="Center" Margin="0,20"
+                           IsVisible="{Binding IsLoading}"/>
+
+                <!-- Device Items -->
+                <ItemsControl ItemsSource="{Binding Devices}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:DeviceLaunchItem}">
+                            <Border Background="#1e1e2e" CornerRadius="10" Padding="16" Margin="0,0,0,4">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+
+                                    <!-- Status Indicator -->
+                                    <TextBlock Grid.Column="0" Text="{Binding StatusIcon}" FontSize="20"
+                                               VerticalAlignment="Center" Margin="0,0,12,0"/>
+
+                                    <!-- Device Info -->
+                                    <StackPanel Grid.Column="1" Margin="4,0">
+                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <TextBlock Text="{Binding DisplayName}" FontSize="15" 
+                                                       FontWeight="Bold" Foreground="White"/>
+                                            <Border Background="#1a3a1a" CornerRadius="4" 
+                                                    Padding="8,2" VerticalAlignment="Center"
+                                                    IsVisible="{Binding IsRunning}">
+                                                <TextBlock Text="RUNNING" FontSize="10" Foreground="#22c55e"
+                                                           FontWeight="Bold"/>
+                                            </Border>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
+                                            <TextBlock Text="{Binding StoreDisplay}" FontSize="12" Foreground="#888"/>
+                                            <TextBlock Text="{Binding EnabledDisplay}" FontSize="12"/>
+                                            <TextBlock Text="{Binding StatusText, StringFormat='⏱ {0}'}" 
+                                                       FontSize="12" Foreground="#888"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- Lock/Unlock Button -->
+                                    <Button Grid.Column="2" FontSize="16"
+                                            Command="{Binding $parent[ItemsControl].((vm:DeviceLauncherViewModel)DataContext).ToggleLockDeviceCommand}"
+                                            CommandParameter="{Binding}"
+                                            Background="#333" Foreground="White" 
+                                            Padding="12,8" CornerRadius="6" Margin="4,0"
+                                            ToolTip.Tip="Khóa/Mở khóa thiết bị"
+                                            VerticalAlignment="Center">
+                                        <!-- Show 🔒 if enabled (click to lock), 🔓 if disabled (click to unlock) -->
+                                        <Panel>
+                                            <TextBlock Text="🔒" IsVisible="{Binding User.IsEnabled}"/>
+                                            <TextBlock Text="🔓" IsVisible="{Binding !User.IsEnabled}"/>
+                                        </Panel>
+                                    </Button>
+
+                                    <!-- Play / Stop Button -->
+                                    <Panel Grid.Column="3">
+                                        <!-- Play Button (when not running) -->
+                                        <Button Content="▶" FontSize="18"
+                                                Command="{Binding $parent[ItemsControl].((vm:DeviceLauncherViewModel)DataContext).LaunchDeviceCommand}"
+                                                CommandParameter="{Binding}"
+                                                Background="#22c55e" Foreground="White" 
+                                                Padding="14,8" CornerRadius="6" Margin="4,0"
+                                                IsVisible="{Binding !IsRunning}"
+                                                ToolTip.Tip="Khởi động PhotoBooth"
+                                                VerticalAlignment="Center" FontWeight="Bold"/>
+
+                                        <!-- Stop Button (when running) -->
+                                        <Button Content="⏸" FontSize="18"
+                                                Command="{Binding $parent[ItemsControl].((vm:DeviceLauncherViewModel)DataContext).StopDeviceCommand}"
+                                                CommandParameter="{Binding}"
+                                                Background="#e94560" Foreground="White" 
+                                                Padding="14,8" CornerRadius="6" Margin="4,0"
+                                                IsVisible="{Binding IsRunning}"
+                                                ToolTip.Tip="Dừng PhotoBooth"
+                                                VerticalAlignment="Center" FontWeight="Bold"/>
+                                    </Panel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="2" Background="#1e1e2e" CornerRadius="10" Padding="14" Margin="0,10,0,0"
+                IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <TextBlock Text="{Binding StatusMessage}" FontSize="13" Foreground="#ccc" 
+                       TextWrapping="Wrap"/>
+        </Border>
+
+    </Grid>
+</UserControl>
