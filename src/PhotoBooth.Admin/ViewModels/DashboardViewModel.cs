@@ -31,9 +31,13 @@ public partial class DashboardViewModel : ObservableObject
     [ObservableProperty]
     private string _lastUpdated = "";
 
+    [ObservableProperty]
+    private DeviceLauncherViewModel _deviceLauncher;
+
     public DashboardViewModel(ApiService apiService)
     {
         _apiService = apiService;
+        DeviceLauncher = new DeviceLauncherViewModel(apiService);
         LoadStatsCommand.ExecuteAsync(null);
     }
 

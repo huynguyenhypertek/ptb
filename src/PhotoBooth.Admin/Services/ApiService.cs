@@ -152,7 +152,16 @@ public class ApiService
     {
         using var content = new MultipartFormDataContent();
         var fileBytes = await File.ReadAllBytesAsync(filePath);
-        content.Add(new ByteArrayContent(fileBytes), "file", Path.GetFileName(filePath));
+        var fileContent = new ByteArrayContent(fileBytes);
+        
+        // Fix: Set correct Content-Type so API FileValidationHelper doesn't reject it
+        var ext = Path.GetExtension(filePath).ToLower();
+        if (ext == ".jpg" || ext == ".jpeg") 
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
+        else if (ext == ".png") 
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+
+        content.Add(fileContent, "file", Path.GetFileName(filePath));
         content.Add(new StringContent(name), "name");
         content.Add(new StringContent(layoutType), "layoutType");
         

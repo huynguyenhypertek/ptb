@@ -12,6 +12,9 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        // Fix macOS camera auth issue where OpenCV cannot spin main run loop
+        Environment.SetEnvironmentVariable("OPENCV_AVFOUNDATION_SKIP_AUTH", "1");
+        
         DeviceConfig.ParseArgs(args);
 
         // Disabled: User wants to keep photos on disk

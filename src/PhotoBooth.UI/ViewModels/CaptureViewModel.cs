@@ -136,15 +136,17 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
     {
         try
         {
+            // Execute initialization on UI thread to allow macOS camera permission prompt
+            bool isInitialized = await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (_disposed) return false;
+                bool success = _cameraService.Initialize(0);
+                if (!success) success = _cameraService.Initialize(1);
+                return success;
+            });
+
             await Task.Run(() =>
             {
-                bool isInitialized = _cameraService.Initialize(0);
-                
-                if (!isInitialized)
-                {
-                    isInitialized = _cameraService.Initialize(1);
-                }
-
                 if (_disposed) return;
 
                 if (isInitialized)
