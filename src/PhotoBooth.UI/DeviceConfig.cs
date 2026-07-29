@@ -18,6 +18,10 @@ public static class DeviceConfig
         get => _apiBaseUrl;
         set => _apiBaseUrl = value?.TrimEnd('/') ?? "";
     }
+
+    public static bool EnablePrinting { get; set; } = false;
+    public static string PrinterName { get; set; } = "";
+
     // ====================================================================
     // CẤU HÌNH GOOGLE DRIVE — SỬA Ở ĐÂY
     // ====================================================================
@@ -39,13 +43,13 @@ public static class DeviceConfig
     //      var parents = DriveApp.getFoldersByName("PhotoBooth");
     //    thành tên mới tương ứng.
     //
-    public static string GoogleDrivePath { get; set; } = "/Users/huynguyen/Library/CloudStorage/GoogleDrive-dhgaming12th4@gmail.com/Drive của tôi/sending/PhotoBooth";
+    public static string GoogleDrivePath { get; set; } = "";
 
     // 🔧 URL Apps Script (lấy từ Google Drive → Apps Script → Deploy):
     //    - URL này cố định, KHÔNG đổi trừ khi bạn tạo deployment mới
     //    - Nếu cần sửa code Apps Script: Triển khai → Quản lý → Chỉnh sửa → Phiên bản mới
     //
-    public static string AppsScriptUrl { get; set; } = "https://script.google.com/macros/s/AKfycbxNiDN4DpVJswsasmaxUpubSSvI2ATO9PI_ZLbeRxl0bhX8VZF_g-FgR3SYj0MkyJjawQ/exec";
+    public static string AppsScriptUrl { get; set; } = "";
 
     /// <summary>
     /// Returns GoogleDrivePath with PII masked — shows only last 2 path segments.
@@ -131,8 +135,18 @@ public static class DeviceConfig
                 if (!string.IsNullOrWhiteSpace(url))
                     AppsScriptUrl = url;
             }
+            else if (arg.StartsWith("--enablePrinting="))
+            {
+                EnablePrinting = bool.TryParse(arg.Substring("--enablePrinting=".Length), out var ep) && ep;
+            }
+            else if (arg.StartsWith("--printerName="))
+            {
+                var name = arg.Substring("--printerName=".Length);
+                if (!string.IsNullOrWhiteSpace(name))
+                    PrinterName = name;
+            }
         }
         
-        System.Console.WriteLine($"[CONFIG] StoreId={StoreId}, DeviceId={DeviceId}, PlanType={PlanType}, ApiBaseUrl={ApiBaseUrl}, PriceLayout6={PriceLayout6}, PriceLayout2={PriceLayout2}, GoogleDriveEnabled={GoogleDriveEnabled}, GoogleDrivePath={GetMaskedGDrivePath()}, AppsScriptUrl={GetMaskedAppsScriptUrl()}");
+        System.Console.WriteLine($"[CONFIG] StoreId={StoreId}, DeviceId={DeviceId}, PlanType={PlanType}, ApiBaseUrl={ApiBaseUrl}, PriceLayout6={PriceLayout6}, PriceLayout2={PriceLayout2}, GoogleDriveEnabled={GoogleDriveEnabled}, GoogleDrivePath={GetMaskedGDrivePath()}, AppsScriptUrl={GetMaskedAppsScriptUrl()}, EnablePrinting={EnablePrinting}, PrinterName={PrinterName}");
     }
 }

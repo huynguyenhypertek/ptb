@@ -1,0 +1,128 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoBooth.Admin.ViewModels"
+             x:Class="PhotoBooth.Admin.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+    <ScrollViewer>
+        <StackPanel Margin="20" Spacing="20">
+            <!-- Header -->
+            <TextBlock Text="⚙️ Cài đặt" FontSize="28" FontWeight="Bold" Foreground="White"/>
+
+            <!-- Info Note -->
+            <Border Background="#1a2a3e" CornerRadius="10" Padding="16" BorderBrush="#2563eb" BorderThickness="1">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="ℹ️ Lưu ý cấu hình" FontSize="14" FontWeight="Bold" Foreground="#60a5fa"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="#94a3b8" FontSize="13"
+                               Text="• Cả 2 config (Google Drive path và Apps Script URL) phải cùng 1 tài khoản Google"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="#94a3b8" FontSize="13"
+                               Text="• Tên folder cuối trong đường dẫn (VD: 'PhotoBooth') phải trùng với tên trong Apps Script"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="#94a3b8" FontSize="13"
+                               Text="• Mỗi lượt chụp sẽ tạo 1 folder mới bên trong, chỉ chứa ảnh (không có JSON)"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Google Drive Section -->
+            <Border Background="#1e1e2e" CornerRadius="12" Padding="20">
+                <StackPanel Spacing="14">
+                    <TextBlock Text="📁 Google Drive" FontSize="20" FontWeight="Bold" Foreground="White"/>
+
+                    <!-- Toggle Enable/Disable -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel>
+                            <TextBlock Text="Bật lưu ảnh vào Google Drive" Foreground="#ccc" FontSize="14"/>
+                            <TextBlock Text="Khi tắt, ảnh sẽ lưu vào ~/Pictures/PhotoBooth/" 
+                                       Foreground="#666" FontSize="12" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding GoogleDriveEnabled}" 
+                                      VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <Border Height="1" Background="#333"/>
+
+                    <!-- Google Drive Path -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Đường dẫn thư mục Google Drive trên máy" Foreground="#aaa" FontSize="13"/>
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                            <Border Grid.Column="0" Background="#2a2a3e" CornerRadius="8" Padding="12,10" 
+                                    Margin="0,0,8,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding GoogleDrivePath}" Foreground="White" FontSize="13"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTip.Tip="{Binding GoogleDrivePath}">
+                                    <TextBlock.Styles>
+                                        <Style Selector="TextBlock[Text='']">
+                                            <Setter Property="Text" Value="Chưa chọn thư mục..." />
+                                            <Setter Property="Foreground" Value="#666"/>
+                                        </Style>
+                                    </TextBlock.Styles>
+                                </TextBlock>
+                            </Border>
+                            <Button Grid.Column="1" Content="📁 Chọn thư mục" 
+                                    Command="{Binding BrowseGoogleDrivePathCommand}"
+                                    Background="#7c3aed" Foreground="White" 
+                                    CornerRadius="8" Padding="14,10" FontWeight="Bold"/>
+                        </Grid>
+                        <TextBlock Text="{Binding FolderStatus}" FontSize="12" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Apps Script Section -->
+            <Border Background="#1e1e2e" CornerRadius="12" Padding="20">
+                <StackPanel Spacing="14">
+                    <TextBlock Text="🔗 Apps Script URL" FontSize="20" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock Text="URL từ Google Apps Script → Deploy → Web app" 
+                               Foreground="#888" FontSize="13"/>
+
+                    <TextBox Text="{Binding AppsScriptUrl}" 
+                             Watermark="https://script.google.com/macros/s/AKfycbx.../exec"
+                             Padding="12,10" CornerRadius="8" FontSize="13"/>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button Content="🔗 Test URL" Command="{Binding TestAppsScriptUrlCommand}"
+                                Background="#2563eb" Foreground="White" CornerRadius="8" Padding="14,8"
+                                IsEnabled="{Binding !IsTesting}"/>
+                        <TextBlock Text="{Binding TestUrlResult}" Foreground="#ccc" FontSize="13"
+                                   VerticalAlignment="Center" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Printer Settings Section -->
+            <Border Background="#1e1e2e" CornerRadius="12" Padding="20">
+                <StackPanel Spacing="14">
+                    <TextBlock Text="🖨️ Máy in" FontSize="20" FontWeight="Bold" Foreground="White"/>
+
+                    <!-- Toggle Enable/Disable Printing -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel>
+                            <TextBlock Text="Kích hoạt in thật (Real Printing)" Foreground="#ccc" FontSize="14"/>
+                            <TextBlock Text="Nếu tắt, phần mềm sẽ giả lập quá trình in (Simulate)" 
+                                       Foreground="#666" FontSize="12" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding EnablePrinting}" 
+                                      VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <Border Height="1" Background="#333"/>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Tên máy in trong hệ thống (Printer Name)" Foreground="#aaa" FontSize="13"/>
+                        <TextBox Text="{Binding PrinterName}" 
+                                 Watermark="VD: DNP DS-RX1HS"
+                                 Padding="12,10" CornerRadius="8" FontSize="13"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Save Button -->
+            <Grid ColumnDefinitions="Auto,*">
+                <Button Content="💾 Lưu cài đặt" Command="{Binding SaveSettingsCommand}"
+                        Background="#22c55e" Foreground="White" CornerRadius="10" 
+                        Padding="24,12" FontSize="16" FontWeight="Bold"/>
+                <TextBlock Grid.Column="1" Text="{Binding StatusMessage}" Foreground="#f0c040" 
+                           FontSize="14" VerticalAlignment="Center" Margin="16,0,0,0"/>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

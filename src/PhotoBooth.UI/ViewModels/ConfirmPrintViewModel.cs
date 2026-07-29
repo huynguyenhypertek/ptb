@@ -20,6 +20,9 @@ public partial class ConfirmPrintViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private Bitmap? _finalImage;
 
+    [ObservableProperty]
+    private int _printCopies = 1;
+
     public ConfirmPrintViewModel(NavigationService navigationService, SessionService sessionService) 
         : base(navigationService, sessionService)
     {
@@ -63,9 +66,22 @@ public partial class ConfirmPrintViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
+    private void IncreaseCopies()
+    {
+        if (PrintCopies < 10) PrintCopies++;
+    }
+
+    [RelayCommand]
+    private void DecreaseCopies()
+    {
+        if (PrintCopies > 1) PrintCopies--;
+    }
+
+    [RelayCommand]
     private void GoNext()
     {
-        NavigationService.NavigateTo<ThankYouViewModel>();
+        SessionService.CurrentSession.PrintCopies = PrintCopies;
+        NavigationService.NavigateTo<PrintingViewModel>();
     }
 
     [RelayCommand]

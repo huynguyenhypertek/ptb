@@ -10,6 +10,7 @@ namespace PhotoBooth.Admin.ViewModels;
 public partial class MainViewModel : ObservableObject
 {
     private readonly ApiService _apiService = new();
+    private readonly SettingsService _settingsService = new();
 
     [ObservableProperty]
     private object? _currentView;
@@ -56,6 +57,12 @@ public partial class MainViewModel : ObservableObject
         CurrentView = new LoginViewModel(_apiService, OnLoginSuccess);
     }
 
+    [RelayCommand]
+    private void ShowSettings()
+    {
+        CurrentView = new SettingsViewModel(_settingsService);
+    }
+
     private void OnLoginSuccess(string username)
     {
         IsLoggedIn = true;
@@ -63,7 +70,7 @@ public partial class MainViewModel : ObservableObject
         CurrentRole = _apiService.Role ?? "";
         CurrentStore = _apiService.StoreName ?? "Tất cả";
         IsSystemAdmin = _apiService.Role == "SystemAdmin";
-        CurrentView = new DashboardViewModel(_apiService);
+        CurrentView = new DashboardViewModel(_apiService, _settingsService);
     }
 
     [RelayCommand]
@@ -96,7 +103,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ShowDashboard()
     {
-        CurrentView = new DashboardViewModel(_apiService);
+        CurrentView = new DashboardViewModel(_apiService, _settingsService);
     }
 
     [RelayCommand]
@@ -132,7 +139,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ShowDeviceLauncher()
     {
-        CurrentView = new DeviceLauncherViewModel(_apiService);
+        CurrentView = new DeviceLauncherViewModel(_apiService, _settingsService);
     }
 
     [RelayCommand]

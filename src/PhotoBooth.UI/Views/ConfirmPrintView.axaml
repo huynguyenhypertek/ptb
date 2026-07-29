@@ -75,6 +75,18 @@
                     <Image Source="/Assets/buttons/next.png"/>
                 </Button>
 
+                <!-- Copies Selector -->
+                <Border HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,150,250" Background="#80000000" Padding="20" CornerRadius="15">
+                    <StackPanel Spacing="20">
+                        <TextBlock Text="Số lượng bản in" Foreground="White" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" Spacing="30" HorizontalAlignment="Center">
+                            <Button Content="-" Command="{Binding DecreaseCopiesCommand}" FontSize="40" FontWeight="Bold" Width="60" Height="60" CornerRadius="30" Background="#555" Foreground="White" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand"/>
+                            <TextBlock Text="{Binding PrintCopies}" Foreground="White" FontSize="48" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <Button Content="+" Command="{Binding IncreaseCopiesCommand}" FontSize="40" FontWeight="Bold" Width="60" Height="60" CornerRadius="30" Background="#555" Foreground="White" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Cursor="Hand"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
             </Grid>
         </Viewbox>
     </Grid>

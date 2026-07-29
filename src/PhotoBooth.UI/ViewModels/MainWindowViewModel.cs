@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using PhotoBooth.UI.Services;
 
 namespace PhotoBooth.UI.ViewModels;
@@ -31,7 +31,7 @@ public partial class MainWindowViewModel : ObservableObject
         NavigationService.RegisterViewModel(() => new PhotoSelectionViewModel(NavigationService, SessionService));
         NavigationService.RegisterViewModel(() => new StickerViewModel(NavigationService, SessionService));
         NavigationService.RegisterViewModel(() => new ConfirmPrintViewModel(NavigationService, SessionService));
-        NavigationService.RegisterViewModel(() => new PrintingViewModel(NavigationService, SessionService));
+        NavigationService.RegisterViewModel(() => new PrintingViewModel(NavigationService, SessionService, new PhotoBooth.Infrastructure.Services.PrintService()));
         NavigationService.RegisterViewModel(() => new ThankYouViewModel(NavigationService, SessionService));
         NavigationService.RegisterViewModel(() => new QRCodeViewModel(NavigationService, SessionService));
 

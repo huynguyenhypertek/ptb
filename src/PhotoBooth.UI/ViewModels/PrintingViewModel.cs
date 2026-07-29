@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PhotoBooth.Core.Interfaces;
 using PhotoBooth.UI.Services;
 
 namespace PhotoBooth.UI.ViewModels;
@@ -27,11 +28,13 @@ public partial class PrintingViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private string _statusMessage = "Đang chuẩn bị in...";
 
+    private readonly IPrintService _printService;
     private readonly CancellationTokenSource _cts = new();
 
-    public PrintingViewModel(NavigationService navigationService, SessionService sessionService) 
+    public PrintingViewModel(NavigationService navigationService, SessionService sessionService, IPrintService printService) 
         : base(navigationService, sessionService)
     {
+        _printService = printService;
         _ = StartPrintingAsync(_cts.Token);
     }
 
@@ -39,19 +42,37 @@ public partial class PrintingViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            // Finding 5: Gate on SimulatePrint so setting it to false has effect
-            if (!SimulatePrint)
+            if (DeviceConfig.EnablePrinting && !string.IsNullOrEmpty(DeviceConfig.PrinterName) && !string.IsNullOrEmpty(SessionService.CurrentSession.FinalImagePath))
             {
-                // TODO: Real printer SDK integration goes here
-                StatusMessage = "⚠️ Real printing not yet implemented";
-                Console.WriteLine("[PRINT] SimulatePrint=false but no real printer SDK — skipping");
-                await Task.Delay(2000, ct);
+                StatusMessage = "Đang gửi đến máy in...";
+                Progress = 50;
+                
+                var success = await _printService.PrintImageAsync(
+                    SessionService.CurrentSession.FinalImagePath, 
+                    DeviceConfig.PrinterName, 
+                    SessionService.CurrentSession.PrintCopies, 
+                    ct);
+
+                if (success)
+                {
+                    StatusMessage = "Đã gửi lệnh in thành công!";
+                    Progress = 100;
+                    await Task.Delay(1500, ct);
+                }
+                else
+                {
+                    StatusMessage = "⚠️ Lỗi khi gửi lệnh in!";
+                    await Task.Delay(3000, ct);
+                }
+
                 if (!ct.IsCancellationRequested)
-                    NavigationService.NavigateTo<QRCodeViewModel>();
+                {
+                    NavigationService.NavigateTo<ThankYouViewModel>();
+                }
                 return;
             }
 
-            // WARNING: SIMULATED — all progress steps are artificial delays
+            // SIMULATED PRINTING FALLBACK
             StatusMessage = "Đang xử lý ảnh...";
             for (int i = 0; i <= 30; i++)
             {
@@ -60,7 +81,7 @@ public partial class PrintingViewModel : ViewModelBase, IDisposable
                 await Task.Delay(50, ct);
             }
 
-            StatusMessage = "Đang gửi đến máy in...";
+            StatusMessage = "Đang gửi đến máy in (Giả lập)...";
             for (int i = 30; i <= 60; i++)
             {
                 ct.ThrowIfCancellationRequested();
@@ -68,7 +89,7 @@ public partial class PrintingViewModel : ViewModelBase, IDisposable
                 await Task.Delay(50, ct);
             }
 
-            StatusMessage = "Đang in...";
+            StatusMessage = "Đang in (Giả lập)...";
             for (int i = 60; i <= 100; i++)
             {
                 ct.ThrowIfCancellationRequested();
@@ -80,7 +101,7 @@ public partial class PrintingViewModel : ViewModelBase, IDisposable
             
             if (!ct.IsCancellationRequested)
             {
-                NavigationService.NavigateTo<QRCodeViewModel>();
+                NavigationService.NavigateTo<ThankYouViewModel>();
             }
         }
         catch (OperationCanceledException)

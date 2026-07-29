@@ -16,6 +16,7 @@ public class Session
     public bool IsPaid { get; set; }
     public string? FinalImagePath { get; set; }
     public string? QRCodeUrl { get; set; }
+    public int PrintCopies { get; set; } = 1;
     /// <summary>
     /// Filesystem path for this session's photo directory.
     /// Set by CaptureViewModel when creating the session folder.

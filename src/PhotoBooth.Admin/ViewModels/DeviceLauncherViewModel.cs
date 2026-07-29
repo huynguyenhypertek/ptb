@@ -37,6 +37,7 @@ public partial class DeviceLaunchItem : ObservableObject
 public partial class DeviceLauncherViewModel : ObservableObject
 {
     private readonly ApiService _apiService;
+    private readonly SettingsService _settingsService;
 
     [ObservableProperty]
     private ObservableCollection<DeviceLaunchItem> _devices = [];
@@ -50,9 +51,10 @@ public partial class DeviceLauncherViewModel : ObservableObject
     // Role-based info
     public bool IsSystemAdmin => _apiService.Role == "SystemAdmin";
 
-    public DeviceLauncherViewModel(ApiService apiService)
+    public DeviceLauncherViewModel(ApiService apiService, SettingsService settingsService)
     {
         _apiService = apiService;
+        _settingsService = settingsService;
         _ = LoadDevicesAsync();
     }
 
@@ -162,6 +164,17 @@ public partial class DeviceLauncherViewModel : ObservableObject
 
             if (item.User.StoreId.HasValue)
                 args += $" --storeId={item.User.StoreId.Value}";
+
+            // Pass Google Drive & Apps Script config from settings
+            var settings = _settingsService.Settings;
+            args += $" --googleDriveEnabled={settings.GoogleDriveEnabled}";
+            if (!string.IsNullOrEmpty(settings.GoogleDrivePath))
+                args += $" --googleDrivePath=\"{settings.GoogleDrivePath}\"";
+            if (!string.IsNullOrEmpty(settings.AppsScriptUrl))
+                args += $" --appsScriptUrl={settings.AppsScriptUrl}";
+            args += $" --enablePrinting={settings.EnablePrinting}";
+            if (!string.IsNullOrEmpty(settings.PrinterName))
+                args += $" --printerName=\"{settings.PrinterName}\"";
 
             var startInfo = new ProcessStartInfo
             {

@@ -30,6 +30,9 @@
         <DataTemplate DataType="{x:Type vm:DeviceLauncherViewModel}">
             <views:DeviceLauncherView />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <views:SettingsView />
+        </DataTemplate>
     </Window.DataTemplates>
 
     <Panel>
@@ -101,6 +104,10 @@
                                 HorizontalAlignment="Stretch" Padding="12,10"
                                 Background="{Binding CardBg}" Foreground="{Binding TextColor}" Margin="0,5"
                                 CornerRadius="8" IsVisible="{Binding IsSystemAdmin}"/>
+                        <Button Content="⚙️  Cài đặt" Command="{Binding ShowSettingsCommand}"
+                                HorizontalAlignment="Stretch" Padding="12,10"
+                                Background="{Binding CardBg}" Foreground="{Binding TextColor}" Margin="0,5"
+                                CornerRadius="8"/>
                         
                         <!-- Logout -->
                         <Border Height="1" Background="#333" Margin="0,15,0,10"/>

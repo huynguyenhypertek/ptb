@@ -375,43 +375,7 @@ public partial class PhotoSelectionViewModel : ViewModelBase, IDisposable
             
             ImageCompositeService.Compose(tempFramePath, selectedPhotoPaths, positions, outputPath);
             
-            // D1: Overlay sequential number with try-catch — photo without number is still usable
-            try
-            {
-                var seqNumber = SessionService.CurrentSession.SequentialNumber;
-                if (!string.IsNullOrEmpty(seqNumber))
-                {
-                    var backupPath = ImageCompositeService.OverlaySequentialNumber(outputPath, seqNumber);
-                    if (backupPath != null)
-                        Console.WriteLine($"[COMPOSITE] Original backed up to: {Path.GetFileName(backupPath)}");
-                }
-            }
-            catch (Exception overlayEx)
-            {
-                Console.WriteLine($"[COMPOSITE] WARNING: Failed to overlay sequential number: {overlayEx.Message}");
-                // Continue without overlay — photo is still usable
-            }
-            
             SessionService.SetFinalImage(outputPath);
-            
-            // Save session data as JSON
-            // D4/P2: Include SequentialNumber in session.json for traceability
-            var sessionData = new
-            {
-                DeviceId = DeviceConfig.DeviceId,
-                LayoutUsed = layoutId ?? "unknown",
-                FrameUsed = SessionService.CurrentSession.SelectedBackground?.Id ?? "unknown",
-                SequentialNumber = SessionService.CurrentSession.SequentialNumber ?? "",
-                PhotoCount = selectedPhotoPaths.Length,
-                TotalCaptured = allPhotos.Count,
-                CreatedAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
-                FinalImagePath = outputPath
-            };
-            
-            string jsonPath = Path.Combine(sessionDir, "session.json");
-            string json = JsonSerializer.Serialize(sessionData, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(jsonPath, json);
-            Console.WriteLine($"[SESSION] Data saved: {jsonPath}");
             
             // Capture ALL session data as locals before fire-and-forget (Finding 8: avoid race with StartNewSession)
             var capturedDeviceId = DeviceConfig.DeviceId;

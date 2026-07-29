@@ -34,10 +34,10 @@ public partial class DashboardViewModel : ObservableObject
     [ObservableProperty]
     private DeviceLauncherViewModel _deviceLauncher;
 
-    public DashboardViewModel(ApiService apiService)
+    public DashboardViewModel(ApiService apiService, SettingsService settingsService)
     {
         _apiService = apiService;
-        DeviceLauncher = new DeviceLauncherViewModel(apiService);
+        DeviceLauncher = new DeviceLauncherViewModel(apiService, settingsService);
         LoadStatsCommand.ExecuteAsync(null);
     }
 
