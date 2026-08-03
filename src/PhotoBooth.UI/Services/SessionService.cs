@@ -14,6 +14,13 @@ namespace PhotoBooth.UI.Services;
 public class SessionService
 {
     /// <summary>
+    /// Cancels any in-flight background tasks (e.g. PreFetchDriveUrl) from the previous session.
+    /// Recreated on each StartNewSession() call.
+    /// </summary>
+    private CancellationTokenSource _sessionCts = new();
+
+
+    /// <summary>
     /// Base directory for all session folders.
     /// Returns Google Drive path when enabled and accessible, otherwise ~/Pictures/PhotoBooth/.
     /// Validates Directory.Exists so fallback is consistent across SessionService and CaptureViewModel.
@@ -45,7 +52,18 @@ public class SessionService
 
     public void StartNewSession()
     {
+        // Cancel any in-flight background tasks from the previous session (e.g. PreFetchDriveUrl)
+        _sessionCts.Cancel();
+        _sessionCts.Dispose();
+        _sessionCts = new CancellationTokenSource();
+        
         CurrentSession = new Session();
+        
+        // Force GC between sessions to reclaim native memory from OpenCV Mat / Avalonia Bitmap
+        // objects that were disposed but not yet finalized.
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
     }
 
     /// <summary>
@@ -85,7 +103,7 @@ public class SessionService
         // Start background pre-fetch of Google Drive URL during payment/capture screens
         if (DeviceConfig.GoogleDriveEnabled && !string.IsNullOrEmpty(DeviceConfig.AppsScriptUrl))
         {
-            _ = PreFetchDriveUrlAsync(sessionFolder);
+            _ = PreFetchDriveUrlAsync(sessionFolder, _sessionCts.Token);
         }
     }
 
@@ -94,7 +112,7 @@ public class SessionService
     /// then caches the URL in Session.PreFetchedDriveUrl for instant QR generation.
     /// Runs during payment/capture screens (~20-30s before QR screen).
     /// </summary>
-    private async Task PreFetchDriveUrlAsync(string sessionFolderName)
+    private async Task PreFetchDriveUrlAsync(string sessionFolderName, CancellationToken ct)
     {
         const int maxAttempts = 20; // More attempts since we have more time
         const int delayMs = 3000;
@@ -105,10 +123,13 @@ public class SessionService
         {
             try
             {
+                ct.ThrowIfCancellationRequested();
+                
                 var separator = DeviceConfig.AppsScriptUrl.Contains('?') ? "&" : "?";
                 var url = $"{DeviceConfig.AppsScriptUrl}{separator}folder={Uri.EscapeDataString(sessionFolderName)}";
 
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(TimeSpan.FromSeconds(10));
                 var json = await client.GetStringAsync(url, cts.Token);
                 var result = System.Text.Json.JsonSerializer.Deserialize<AppsScriptResponse>(json);
 
@@ -121,12 +142,25 @@ public class SessionService
 
                 Console.WriteLine($"[SESSION] Pre-fetch attempt {attempt}: folder not on cloud yet");
             }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("[SESSION] Pre-fetch cancelled (new session started)");
+                return; // New session started — stop polling for old session
+            }
             catch (Exception)
             {
                 Console.WriteLine($"[SESSION] Pre-fetch attempt {attempt}: request failed");
             }
 
-            await Task.Delay(delayMs);
+            try
+            {
+                await Task.Delay(delayMs, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("[SESSION] Pre-fetch delay cancelled (new session started)");
+                return;
+            }
         }
 
         Console.WriteLine("[SESSION] Pre-fetch exhausted — ThankYou will retry");

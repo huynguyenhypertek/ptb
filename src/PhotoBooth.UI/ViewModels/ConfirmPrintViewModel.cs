@@ -36,7 +36,8 @@ public partial class ConfirmPrintViewModel : ViewModelBase, IDisposable
         {
             var bgPath = "avares://PhotoBooth.UI/Assets/backgrounds/nen10 hien thi anh.png";
             var oldBg = BackgroundImage;
-            BackgroundImage = new Bitmap(AssetLoader.Open(new Uri(bgPath)));
+            using var stream = AssetLoader.Open(new Uri(bgPath));
+            BackgroundImage = new Bitmap(stream);
             oldBg?.Dispose();
         }
         catch (Exception ex)

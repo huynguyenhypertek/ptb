@@ -29,7 +29,8 @@ public partial class PaymentProcessingViewModel : ViewModelBase, IDisposable
         {
             var uri = new Uri("avares://PhotoBooth.UI/Assets/backgrounds/back5_quetQR.png");
             var oldBg = BackgroundImage;
-            BackgroundImage = new Bitmap(AssetLoader.Open(uri));
+            using var stream = AssetLoader.Open(uri);
+            BackgroundImage = new Bitmap(stream);
             oldBg?.Dispose();
         }
         catch (Exception ex)

@@ -78,9 +78,10 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
     // Task 3.6: Shooting cancellation
     private CancellationTokenSource? _shootingCts;
 
-    public CaptureViewModel(NavigationService navigationService, SessionService sessionService) 
+    public CaptureViewModel(NavigationService navigationService, SessionService sessionService, ICameraService cameraService) 
         : base(navigationService, sessionService)
     {
+        _cameraService = cameraService;
         TotalPhotos = SessionService.CurrentSession.SelectedLayout?.CaptureCount ?? 8;
         
         LoadCaptureBackground();
@@ -95,8 +96,7 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
         _photosDirectory = SessionService.CurrentSession.SessionDirectory!;
         Directory.CreateDirectory(_photosDirectory); // Ensure it exists
         
-        // Initialize camera
-        _cameraService = new CameraService();
+        // Initialize camera (shared singleton — just start preview, don't create new)
         InitializeCameraAsync();
     }
 
@@ -121,7 +121,8 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
         try
         {
             var oldBg = BackgroundImage;
-            BackgroundImage = new Bitmap(AssetLoader.Open(new Uri(imagePath)));
+            using var stream = AssetLoader.Open(new Uri(imagePath));
+            BackgroundImage = new Bitmap(stream);
             oldBg?.Dispose();
         }
         catch (Exception ex)
@@ -464,24 +465,37 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
         NavigationService.NavigateTo<PhotoSelectionViewModel>();
     }
 
-    // Task 3.4: Safe dispose with InvokeAsync
+    // Fix #4: Reordered dispose — stop camera and unsubscribe events BEFORE setting _disposed
+    // to prevent orphaned Bitmaps from OnFrameReady firing between _disposed=true and unsubscribe.
     public void Dispose()
     {
-        _disposed = true;
-        // Cancel shooting sequence nếu đang chạy
+        // 1. Cancel shooting sequence if running
         _shootingCts?.Cancel();
         _shootingCts?.Dispose();
         _shootingCts = null;
-        // Finding 5: Cancel any pending reconnect delay immediately
+        
+        // 2. Cancel any pending reconnect delay
         _reconnectCts?.Cancel();
         _reconnectCts?.Dispose();
         _reconnectCts = null;
+        
+        // 3. Stop preview FIRST — this stops OnFrameReady from firing
+        try
+        {
+            _cameraService.StopPreview();
+        }
+        catch (ObjectDisposedException) { }
+        
+        // 4. Unsubscribe events AFTER preview stopped
         _cameraService.FrameReady -= OnFrameReady;
         _cameraService.CameraError -= OnCameraError;
-        // Dispose camera off-thread to avoid blocking UI during StopPreview().Wait(2000)
-        var cam = _cameraService;
-        Task.Run(() => cam.Dispose());
-        // Dispose bitmap trên UI thread, dùng InvokeAsync để đảm bảo hoàn tất
+        _eventSubscribed = false;
+        
+        // 5. NOW safe to set disposed flag
+        _disposed = true;
+        
+        // 6. Dispose bitmaps on UI thread — camera is already stopped so no new ones will arrive
+        // NOTE: Do NOT dispose _cameraService — it's a shared singleton owned by MainWindowViewModel
         Dispatcher.UIThread.InvokeAsync(() =>
         {
             CameraPreview?.Dispose();

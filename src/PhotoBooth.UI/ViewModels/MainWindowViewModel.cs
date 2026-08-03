@@ -1,15 +1,27 @@
+using System;
 using CommunityToolkit.Mvvm.ComponentModel;
+using PhotoBooth.Core.Interfaces;
+using PhotoBooth.Infrastructure.Services;
 using PhotoBooth.UI.Services;
+
 
 namespace PhotoBooth.UI.ViewModels;
 
 /// <summary>
 /// Main window ViewModel that hosts the current view.
 /// </summary>
-public partial class MainWindowViewModel : ObservableObject
+public partial class MainWindowViewModel : ObservableObject, IDisposable
 {
     public NavigationService NavigationService { get; }
     public SessionService SessionService { get; }
+    
+    /// <summary>
+    /// Singleton camera service shared across all sessions.
+    /// Created once at startup, disposed when app exits.
+    /// Prevents native VideoCapture handle leaks from per-session creation.
+    /// </summary>
+    private readonly ICameraService _sharedCameraService = new CameraService();
+
 
     [ObservableProperty]
     private ObservableObject? _currentView;
@@ -27,7 +39,8 @@ public partial class MainWindowViewModel : ObservableObject
         NavigationService.RegisterViewModel(() => new PaymentAmountViewModel(NavigationService, SessionService));
         NavigationService.RegisterViewModel(() => new PaymentProcessingViewModel(NavigationService, SessionService));
         NavigationService.RegisterViewModel(() => new PaymentSuccessViewModel(NavigationService, SessionService));
-        NavigationService.RegisterViewModel(() => new CaptureViewModel(NavigationService, SessionService));
+        NavigationService.RegisterViewModel(() => new CaptureViewModel(NavigationService, SessionService, _sharedCameraService));
+
         NavigationService.RegisterViewModel(() => new PhotoSelectionViewModel(NavigationService, SessionService));
         NavigationService.RegisterViewModel(() => new StickerViewModel(NavigationService, SessionService));
         NavigationService.RegisterViewModel(() => new ConfirmPrintViewModel(NavigationService, SessionService));
@@ -47,4 +60,10 @@ public partial class MainWindowViewModel : ObservableObject
         // Start with the welcome screen
         NavigationService.NavigateTo<StartViewModel>();
     }
+
+    public void Dispose()
+    {
+        _sharedCameraService.Dispose();
+    }
 }
+

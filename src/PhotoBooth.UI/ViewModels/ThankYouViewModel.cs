@@ -62,7 +62,8 @@ public partial class ThankYouViewModel : ViewModelBase, IDisposable
         {
             var bgPath = "avares://PhotoBooth.UI/Assets/backgrounds/nen10.5.png";
             var oldBg = BackgroundImage;
-            BackgroundImage = new Bitmap(AssetLoader.Open(new Uri(bgPath)));
+            using var stream = AssetLoader.Open(new Uri(bgPath));
+            BackgroundImage = new Bitmap(stream);
             oldBg?.Dispose();
         }
         catch (Exception ex)
@@ -207,7 +208,8 @@ public partial class ThankYouViewModel : ViewModelBase, IDisposable
         {
             var bgPath = "avares://PhotoBooth.UI/Assets/backgrounds/nen11.png";
             var oldBg = BackgroundImage;
-            BackgroundImage = new Bitmap(AssetLoader.Open(new Uri(bgPath)));
+            using var stream = AssetLoader.Open(new Uri(bgPath));
+            BackgroundImage = new Bitmap(stream);
             oldBg?.Dispose();
         }
         catch (Exception ex)
@@ -229,7 +231,8 @@ public partial class ThankYouViewModel : ViewModelBase, IDisposable
         {
             var bgPath = "avares://PhotoBooth.UI/Assets/backgrounds/nen11 xac nhan quay ve man hinh chinh.png";
             var oldBg = BackgroundImage;
-            BackgroundImage = new Bitmap(AssetLoader.Open(new Uri(bgPath)));
+            using var stream = AssetLoader.Open(new Uri(bgPath));
+            BackgroundImage = new Bitmap(stream);
             oldBg?.Dispose();
             ShowQRScreen = false;
             ShowThankYou = false;

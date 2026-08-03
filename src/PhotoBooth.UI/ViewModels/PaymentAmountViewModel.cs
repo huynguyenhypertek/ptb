@@ -40,7 +40,8 @@ public partial class PaymentAmountViewModel : ViewModelBase, IDisposable
         try
         {
             var oldBg = BackgroundImage;
-            BackgroundImage = new Bitmap(AssetLoader.Open(new Uri(imagePath)));
+            using var stream = AssetLoader.Open(new Uri(imagePath));
+            BackgroundImage = new Bitmap(stream);
             oldBg?.Dispose();
         }
         catch (Exception ex)

@@ -119,7 +119,8 @@ public partial class PhotoSelectionViewModel : ViewModelBase, IDisposable
         try
         {
             var oldBg = BackgroundImage;
-            BackgroundImage = new Bitmap(AssetLoader.Open(new Uri(bgPath)));
+            using var stream = AssetLoader.Open(new Uri(bgPath));
+            BackgroundImage = new Bitmap(stream);
             oldBg?.Dispose();
         }
         catch (Exception ex)
@@ -162,7 +163,8 @@ public partial class PhotoSelectionViewModel : ViewModelBase, IDisposable
         try
         {
             var oldFrame = FramePreviewImage;
-            FramePreviewImage = new Bitmap(AssetLoader.Open(new Uri(framePath)));
+            using var stream = AssetLoader.Open(new Uri(framePath));
+            FramePreviewImage = new Bitmap(stream);
             oldFrame?.Dispose();
         }
         catch (Exception ex)
@@ -205,7 +207,8 @@ public partial class PhotoSelectionViewModel : ViewModelBase, IDisposable
                 var fallback = layoutId == "layout6" 
                     ? "avares://PhotoBooth.UI/Assets/finish/nen6_1.png"
                     : "avares://PhotoBooth.UI/Assets/finish/nen2_1.png";
-                var newFallback = new Bitmap(AssetLoader.Open(new Uri(fallback)));
+                using var stream = AssetLoader.Open(new Uri(fallback));
+                var newFallback = new Bitmap(stream);
                 if (_disposed) { newFallback.Dispose(); return; }
                 var oldFallback = FramePreviewImage;
                 FramePreviewImage = newFallback;
@@ -238,6 +241,11 @@ public partial class PhotoSelectionViewModel : ViewModelBase, IDisposable
         );
     }
 
+    /// <summary>
+    /// Loads a thumbnail at reduced resolution to minimize RAM usage.
+    /// Full-size decode of 1920x1080 = ~8MB per image (BGRA).
+    /// Thumbnail at 253px wide = ~0.5MB — 16x smaller.
+    /// </summary>
     private Bitmap? LoadThumbnail(string path)
     {
         try
@@ -248,7 +256,9 @@ public partial class PhotoSelectionViewModel : ViewModelBase, IDisposable
                 using var memStream = new MemoryStream();
                 fileStream.CopyTo(memStream);
                 memStream.Position = 0;
-                return new Bitmap(memStream);
+                // Decode at thumbnail size instead of full resolution
+                // This dramatically reduces memory: ~0.5MB vs ~8MB per image
+                return Bitmap.DecodeToWidth(memStream, (int)PhotoWidth);
             }
         }
         catch (Exception ex)

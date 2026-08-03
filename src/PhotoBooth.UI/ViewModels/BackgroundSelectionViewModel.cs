@@ -187,7 +187,8 @@ public partial class BackgroundSelectionViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            return new Bitmap(AssetLoader.Open(new Uri(uri)));
+            using var stream = AssetLoader.Open(new Uri(uri));
+            return new Bitmap(stream);
         }
         catch (Exception ex)
         {
