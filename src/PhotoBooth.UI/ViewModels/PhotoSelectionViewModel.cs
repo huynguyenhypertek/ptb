@@ -396,12 +396,13 @@ public partial class PhotoSelectionViewModel : ViewModelBase, IDisposable
             var capturedTotalCaptured = allPhotos.Count;
             var capturedAmount = layoutId == "layout6" ? DeviceConfig.PriceLayout6 : DeviceConfig.PriceLayout2;
 
-            // Send to API server (fire-and-forget with cancellation)
+            // Send to API server (fire-and-forget with independent timeout).
+            // IMPORTANT: Do NOT use _cts here — it gets disposed when navigating away,
+            // which would cancel the API call before it completes (causing empty session list in Admin).
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    _cts.Token.ThrowIfCancellationRequested();
                     var apiData = new
                     {
                         DeviceId = capturedDeviceId,
@@ -415,16 +416,15 @@ public partial class PhotoSelectionViewModel : ViewModelBase, IDisposable
                     var apiJson = JsonSerializer.Serialize(apiData);
                     
                     var httpClient = HttpService.Client;
-                    // Finding 2: Dispose StringContent and HttpResponseMessage to prevent resource leaks
                     using var content = new System.Net.Http.StringContent(apiJson, System.Text.Encoding.UTF8, "application/json");
-                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
-                    linkedCts.CancelAfter(TimeSpan.FromSeconds(5));
-                    using var response = await httpClient.PostAsync($"{capturedApiBaseUrl}/api/sessions", content, linkedCts.Token);
+                    // Own timeout — independent of ViewModel lifecycle
+                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    using var response = await httpClient.PostAsync($"{capturedApiBaseUrl}/api/sessions", content, timeoutCts.Token);
                     Console.WriteLine($"[API] Session sent: {response.StatusCode}");
                 }
                 catch (OperationCanceledException)
                 {
-                    // Expected when disposed before API call completes
+                    Console.WriteLine("[API] Warning: Session API call timed out");
                 }
                 catch (Exception apiEx)
                 {

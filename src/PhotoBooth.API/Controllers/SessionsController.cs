@@ -25,7 +25,9 @@ public class SessionsController : ControllerBase
         public int StoreId { get; set; }
         public string DeviceId { get; set; } = "";
         public string LayoutUsed { get; set; } = "";
+        public string FrameUsed { get; set; } = "";
         public int PhotoCount { get; set; }
+        public int TotalCaptured { get; set; }
         public decimal Amount { get; set; }
     }
 
@@ -39,7 +41,9 @@ public class SessionsController : ControllerBase
             StoreId = request.StoreId,
             DeviceId = request.DeviceId,
             LayoutUsed = request.LayoutUsed,
+            FrameUsed = request.FrameUsed,
             PhotoCount = request.PhotoCount,
+            TotalCaptured = request.TotalCaptured,
             Amount = request.Amount,
             CreatedAt = DateTime.UtcNow   // always server-side timestamp
         };
@@ -124,5 +128,22 @@ public class SessionsController : ControllerBase
         _db.Sessions.Remove(session);
         await _db.SaveChangesAsync();
         return Ok(new { message = "Deleted" });
+    }
+
+    // DELETE /api/sessions/all — Xóa sạch toàn bộ lượt chụp (dùng khi bàn giao cho khách)
+    // Chỉ SystemAdmin mới được phép.
+    [Authorize(Roles = "SystemAdmin")]
+    [HttpDelete("all")]
+    public async Task<IActionResult> DeleteAll()
+    {
+        var count = await _db.Sessions.CountAsync();
+        _db.Sessions.RemoveRange(_db.Sessions);
+        await _db.SaveChangesAsync();
+
+        // Reset SQLite auto-increment counter về 0 để ID bắt đầu lại từ 1
+        await _db.Database.ExecuteSqlRawAsync("DELETE FROM sqlite_sequence WHERE name='Sessions'");
+
+        Console.WriteLine($"[API] Reset: deleted {count} sessions");
+        return Ok(new { message = $"Đã xóa {count} lượt chụp", deletedCount = count });
     }
 }

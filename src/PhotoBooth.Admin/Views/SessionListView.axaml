@@ -17,10 +17,35 @@
                                    VerticalAlignment="Center" FontSize="16"/>
                     </StackPanel>
                 </Border>
+                <Button Content="📥 Xuất CSV" Command="{Binding ExportCsvCommand}"
+                        Background="#166534" Foreground="White" CornerRadius="8" Padding="12,8"/>
+                <Button Content="🗑️ Reset" Command="{Binding RequestResetCommand}"
+                        Background="#7f1d1d" Foreground="White" CornerRadius="8" Padding="12,8"
+                        IsVisible="{Binding !IsConfirmingReset}"/>
                 <Button Content="🔄 Làm mới" Command="{Binding LoadSessionsCommand}"
                         Background="#2a2a3e" Foreground="White" CornerRadius="8" Padding="12,8"/>
             </StackPanel>
         </Grid>
+
+        <!-- Row 1: Confirmation bar + Export status (stacked, individually toggled) -->
+        <StackPanel Grid.Row="1">
+            <!-- Confirmation bar (shown when Reset is clicked) -->
+            <Border Background="#450a0a" CornerRadius="8" Padding="12,10" Margin="0,0,0,10"
+                    IsVisible="{Binding IsConfirmingReset}">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="⚠️ Xóa sạch toàn bộ lượt chụp? Không thể hoàn tác!"
+                               Foreground="#fca5a5" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    <Button Content="✅ Xác nhận xóa" Command="{Binding ConfirmResetCommand}"
+                            Background="#dc2626" Foreground="White" CornerRadius="6" Padding="10,6"/>
+                    <Button Content="Hủy" Command="{Binding CancelResetCommand}"
+                            Background="#374151" Foreground="White" CornerRadius="6" Padding="10,6"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Export / Reset status message -->
+            <TextBlock Text="{Binding ExportStatus}" Foreground="#86efac" FontSize="13"
+                       Margin="0,0,0,10" IsVisible="{Binding ExportStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+        </StackPanel>
 
         <!-- Sessions Table -->
         <Border Grid.Row="2" Background="#1e1e2e" CornerRadius="12" Padding="5">
@@ -38,8 +63,8 @@
                     <DataGridTextColumn Header="Khung" Binding="{Binding FrameUsed}" Width="100"/>
                     <DataGridTextColumn Header="Ảnh chọn" Binding="{Binding PhotoCount}" Width="80"/>
                     <DataGridTextColumn Header="Tổng chụp" Binding="{Binding TotalCaptured}" Width="90"/>
-                    <DataGridTextColumn Header="💰 Số tiền" Binding="{Binding Amount, StringFormat='{}{0:N0}đ'}" Width="110"/>
-                    <DataGridTextColumn Header="Thời gian" Binding="{Binding CreatedAt, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}" Width="*"/>
+                    <DataGridTextColumn Header="💰 Số tiền" Binding="{Binding AmountFormatted}" Width="110"/>
+                    <DataGridTextColumn Header="Thời gian" Binding="{Binding CreatedAtFormatted}" Width="*"/>
                 </DataGrid.Columns>
             </DataGrid>
         </Border>

@@ -68,6 +68,24 @@ public class ApiService
         return await _client.GetFromJsonAsync<StatsResponse>(url);
     }
 
+    public async Task<(bool Success, string Message)> ResetAllSessionsAsync()
+    {
+        try
+        {
+            using var response = await _client.DeleteAsync($"{BaseUrl}/api/sessions/all");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+                return (true, result.GetProperty("message").GetString() ?? "Đã reset");
+            }
+            return (false, $"Lỗi: {response.StatusCode}");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Lỗi kết nối: {ex.Message}");
+        }
+    }
+
     // Stores
     public async Task<StoreItem[]?> GetStoresAsync()
     {
@@ -255,6 +273,11 @@ public class SessionItem
     public int TotalCaptured { get; set; }
     public decimal Amount { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    // Formatted display properties for Avalonia DataGrid
+    // (StringFormat in DataGrid column bindings crashes when rows contain real data)
+    public string AmountFormatted => $"{Amount:N0}đ";
+    public string CreatedAtFormatted => CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
 }
 
 public class StatsResponse
