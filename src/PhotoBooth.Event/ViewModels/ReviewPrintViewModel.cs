@@ -1,0 +1,262 @@
+using System;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using Avalonia.Media.Imaging;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using PhotoBooth.Core.Interfaces;
+using PhotoBooth.Event.Services;
+
+namespace PhotoBooth.Event.ViewModels;
+
+/// <summary>
+/// Review and print screen ViewModel — shows final composite, prints, navigates back to Start.
+/// </summary>
+public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
+{
+    private readonly NavigationService _navigationService;
+    private readonly SessionService _sessionService;
+    private readonly IPrintService _printService;
+    private readonly CancellationTokenSource _cts = new();
+
+    [ObservableProperty]
+    private Bitmap? _finalImage;
+
+    [ObservableProperty]
+    private int _printCopies = 1;
+
+    [ObservableProperty]
+    private string _statusText = "Đang xử lý...";
+
+    [ObservableProperty]
+    private int _progress = 0;
+
+    [ObservableProperty]
+    private bool _isOffline;
+
+    [ObservableProperty]
+    private string _sequentialNumber = "";
+
+    public ReviewPrintViewModel(
+        NavigationService navigationService, 
+        SessionService sessionService, 
+        IPrintService printService)
+    {
+        _navigationService = navigationService;
+        _sessionService = sessionService;
+        _printService = printService;
+
+        _ = LoadFinalImageAsync();
+
+        IsOffline = false;
+        SequentialNumber = _sessionService.CurrentSession.SequentialNumber ?? "---";
+
+        _ = GenerateQROverlayAsync(_cts.Token);
+    }
+
+    [RelayCommand]
+    private void IncreaseCopies()
+    {
+        if (PrintCopies < 10) PrintCopies++;
+    }
+
+    [RelayCommand]
+    private void DecreaseCopies()
+    {
+        if (PrintCopies > 1) PrintCopies--;
+    }
+
+    [RelayCommand]
+    private void ReturnToStart()
+    {
+        _sessionService.StartNewSession();
+        _navigationService.NavigateTo<StartViewModel>();
+    }
+
+    private async Task LoadFinalImageAsync()
+    {
+        var path = _sessionService.CurrentSession.FinalImagePath;
+        if (!string.IsNullOrEmpty(path) && File.Exists(path))
+        {
+            try
+            {
+                using var memStream = new MemoryStream();
+                using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
+                {
+                    await fileStream.CopyToAsync(memStream);
+                }
+                memStream.Position = 0;
+                var oldFinal = FinalImage;
+                FinalImage = new Bitmap(memStream);
+                oldFinal?.Dispose();
+                System.Diagnostics.Debug.WriteLine($"[DISPLAY] Loaded final image: {path}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ERROR] Failed to load final image: {ex.Message}");
+            }
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"[ERROR] Final image not found: {path}");
+        }
+    }
+
+    [RelayCommand]
+    private async Task StartPrintingAsync()
+    {
+        try
+        {
+            StatusText = "Đang chuẩn bị in...";
+            Progress = 50;
+            
+            if (_sessionService.CurrentSession.FinalImagePath != null)
+            {
+                await _printService.PrintImageAsync(
+                    _sessionService.CurrentSession.FinalImagePath,
+                    "default_printer", 
+                    PrintCopies, 
+                    _cts.Token);
+            }
+            
+            StatusText = "Đã gửi lệnh in";
+            Progress = 100;
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when disposed before printing completes
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ERROR] StartPrintingAsync failed: {ex.Message}");
+        }
+    }
+
+    private async Task GenerateQROverlayAsync(CancellationToken ct)
+    {
+        try
+        {
+            byte[]? qrBytes = null;
+            string? overlayStatus = null;
+
+            // Check mạng trước khi gọi API
+            var isOnline = await NetworkCheckService.IsOnlineAsync();
+
+            if (!isOnline)
+            {
+                // OFFLINE MODE: hiện thông báo liên hệ nhân viên
+                System.Diagnostics.Debug.WriteLine($"[QR-ReviewPrint] Offline mode — seq: {SequentialNumber}");
+                IsOffline = true;
+                StatusText = "📴 Không có kết nối mạng";
+                return;
+            }
+
+            if (DeviceConfig.GoogleDriveEnabled)
+            {
+                var preFetchedUrl = _sessionService.CurrentSession.PreFetchedDriveUrl;
+                
+                if (!string.IsNullOrEmpty(preFetchedUrl))
+                {
+                    // 🚀 Pre-fetched URL available — generate QR instantly!
+                    System.Diagnostics.Debug.WriteLine("[QR-ReviewPrint] Using pre-fetched Drive URL — instant QR!");
+                    using var qrGenerator = new QRCoder.QRCodeGenerator();
+                    var qrData = qrGenerator.CreateQrCode(preFetchedUrl, QRCoder.QRCodeGenerator.ECCLevel.M);
+                    using var qrCode = new QRCoder.PngByteQRCode(qrData);
+                    qrBytes = qrCode.GetGraphic(20, new byte[] { 0, 0, 0 }, new byte[] { 255, 255, 255 });
+                    overlayStatus = "📱 Quét mã QR để tải ảnh từ Google Drive";
+                    System.Diagnostics.Debug.WriteLine("[QR-ReviewPrint] Generated successfully (Google Drive - instant)");
+                }
+                else
+                {
+                    // Fallback: pre-fetch didn't complete yet, use retry logic
+                    System.Diagnostics.Debug.WriteLine("[QR-ReviewPrint] Pre-fetch not ready, falling back to retry...");
+                    var folderName = _sessionService.CurrentSession.SessionFolderName;
+                    var (bytes, status, ok) = await GoogleDriveQRService.WaitSyncAndGenerateQRBytesAsync(
+                        folderName ?? "",
+                        foregroundColor: new byte[] { 0, 0, 0 },
+                        backgroundColor: new byte[] { 255, 255, 255 },
+                        onStatusUpdate: msg => StatusText = msg,
+                        ct: ct
+                    );
+
+                    if (ok && bytes != null)
+                    {
+                        qrBytes = bytes;
+                        overlayStatus = status;
+                        System.Diagnostics.Debug.WriteLine("[QR-ReviewPrint] Generated successfully (Google Drive)");
+                    }
+                    else
+                    {
+                        StatusText = status;
+                        System.Diagnostics.Debug.WriteLine($"[QR-ReviewPrint] Google Drive QR failed: {status}");
+                    }
+                }
+            }
+            else
+            {
+                // Giữ nguyên logic QRUploadService hiện tại
+                var finalImage = _sessionService.CurrentSession.FinalImagePath;
+                var (bytes, status, ok) = await QRUploadService.UploadAndGenerateQRBytesAsync(
+                    finalImage,
+                    foregroundColor: new byte[] { 0, 0, 0 },
+                    backgroundColor: new byte[] { 255, 255, 255 },
+                    ct);
+
+                if (ok && bytes != null)
+                {
+                    qrBytes = bytes;
+                    overlayStatus = status;
+                    System.Diagnostics.Debug.WriteLine("[QR-ReviewPrint] Generated successfully (ngrok)");
+                }
+                else
+                {
+                    StatusText = status;
+                    System.Diagnostics.Debug.WriteLine($"[QR-ReviewPrint] Upload failed: {status}");
+                }
+            }
+
+            if (qrBytes != null)
+            {
+                var finalImagePath = _sessionService.CurrentSession.FinalImagePath;
+                if (!string.IsNullOrEmpty(finalImagePath))
+                {
+                    var success = await Task.Run(() => PhotoBooth.Infrastructure.Services.ImageCompositeService.OverlayQrCode(finalImagePath, qrBytes), ct);
+                    if (success)
+                    {
+                        StatusText = overlayStatus ?? "✅ Đã tạo mã QR";
+                        // Reload FinalImage inside the UI
+                        await LoadFinalImageAsync();
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            if (!ct.IsCancellationRequested)
+            {
+                // Timeout during HTTP request -> activate offline mode
+                System.Diagnostics.Debug.WriteLine($"[QR-ReviewPrint] Timeout detected -> Offline mode");
+                NetworkCheckService.ResetCache();
+                IsOffline = true;
+                StatusText = "📴 Lỗi kết nối mạng";
+            }
+            // Expected when disposed
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[QR-ReviewPrint] Error: {ex.GetType().Name}");
+            NetworkCheckService.ResetCache();
+            IsOffline = true;
+            StatusText = "📴 Lỗi kết nối mạng";
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        
+        FinalImage?.Dispose();
+        FinalImage = null;
+    }
+}
