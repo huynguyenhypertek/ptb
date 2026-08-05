@@ -9,10 +9,10 @@ Hệ thống Photo Booth tự phục vụ — chụp ảnh, chọn khung, in ả
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    PhotoBooth Solution                   │
-├─────────────────┬───────────────────┬───────────────────┤
-│  PhotoBooth.UI  │ PhotoBooth.Admin  │  PhotoBooth.API   │
-│  (Kiosk App)    │ (Quản trị App)    │  (REST API)       │
-├─────────────────┴───────────────────┼───────────────────┤
+├───────────────┬───────────────────┬───────────────┬──────┤
+│ PhotoBooth.UI │ PhotoBooth.Event  │PhotoBooth.Admin│ API  │
+│ (Kiosk App)   │ (Event Fast Kiosk)│(Quản trị App)  │(REST)│
+├───────────────┴───────────────────┴───────────────┼──────┤
 │       PhotoBooth.Infrastructure     │                   │
 │       (Camera, In ấn, Xử lý ảnh)   │                   │
 ├─────────────────────────────────────┤                   │
@@ -27,8 +27,9 @@ Hệ thống Photo Booth tự phục vụ — chụp ảnh, chọn khung, in ả
 |---------|--------|------------|
 | **PhotoBooth.Core** | Domain models & interfaces dùng chung | .NET 10 |
 | **PhotoBooth.Infrastructure** | Services xử lý camera, ảnh, in ấn | .NET 10, OpenCvSharp4 |
-| **PhotoBooth.UI** | Ứng dụng kiosk cho khách hàng sử dụng | Avalonia UI 11.3, CommunityToolkit.Mvvm |
-| **PhotoBooth.Admin** | Ứng dụng quản trị cho chủ cửa hàng | Avalonia UI 11.3, DataGrid |
+| **PhotoBooth.UI** | Ứng dụng kiosk đầy đủ (Thanh toán, Sticker, v.v) | Avalonia UI 11.3 |
+| **PhotoBooth.Event** | Ứng dụng kiosk bản thu gọn cho sự kiện (Chụp nhanh, In ngay) | Avalonia UI 11.3 |
+| **PhotoBooth.Admin** | Ứng dụng quản trị (Có nút khởi động UI hoặc Event) | Avalonia UI 11.3 |
 | **PhotoBooth.API** | REST API backend, quản lý dữ liệu | ASP.NET Core, EF Core, SQLite |
 | **PhotoBooth.Tests** | Unit tests | xUnit |
 
@@ -37,16 +38,11 @@ Hệ thống Photo Booth tự phục vụ — chụp ảnh, chọn khung, in ả
 ## ✨ Tính năng chính
 
 ### 🎬 Ứng dụng Kiosk (PhotoBooth.UI)
-- **Chọn layout** — Hỗ trợ layout 2 ảnh và 6 ảnh
-- **Chọn khung** — Nhiều mẫu khung trang trí
-- **Chọn background** — Hình nền tùy chỉnh
-- **Chụp ảnh** — Kết nối camera qua OpenCV
-- **Chọn & sắp xếp ảnh** — Chọn ảnh đẹp nhất từ các lần chụp
-- **Thêm sticker** — Trang trí ảnh với sticker kéo thả
-- **Thanh toán** — Tích hợp quy trình thanh toán
-- **In ảnh** — In trực tiếp qua máy in kết nối
-- **Chia sẻ QR** — Tạo QR code để tải ảnh về điện thoại
-- **Google Drive sync** — Tự động backup ảnh lên Google Drive
+- **Kiosk Tiêu Chuẩn**: Đầy đủ tính năng chọn khung, sticker, quét mã thanh toán, chia sẻ QR.
+- **Kiosk Sự Kiện (PhotoBooth.Event)**: Quy trình rút gọn tối đa (Chỉ còn 4 bước: Start -> Capture 8 ảnh -> Select 4 ảnh -> In & Chia sẻ QR). Phù hợp cho event đông người, cần chụp nhanh.
+- **Kết nối Camera** — Hỗ trợ nhiều dòng camera qua OpenCV.
+- **In ảnh mượt mà** — Hỗ trợ in qua DNP DS-RX1HS (với tính năng fit-to-page tự động xoay ngang dọc), HP, và các dòng máy in hệ thống.
+- **Google Drive Sync** — Upload ảnh ngay lập tức và tạo mã QR tải ảnh siêu tốc.
 
 ### 🖥️ Ứng dụng Quản trị (PhotoBooth.Admin)
 - **Dashboard** — Tổng quan hoạt động
@@ -163,7 +159,9 @@ dotnet run --project src/PhotoBooth.UI -- \
 | `--googleDrivePath` | Đường dẫn folder Google Drive | `""` |
 | `--appsScriptUrl` | URL Google Apps Script | `""` |
 | `--enablePrinting` | Bật tính năng in ảnh | `false` |
-| `--printerName` | Tên máy in | `""` |
+| `--printerName` | Tên máy in (Bỏ trống để in bằng máy mặc định) | `""` |
+| `--countdownSeconds` | Thời gian đếm ngược trước mỗi lần nháy máy (giây) | `3` |
+| `--eventName` | Tên sự kiện (Dùng làm tiền tố cho tên file ảnh) | `DONGFEST` |
 
 ---
 
