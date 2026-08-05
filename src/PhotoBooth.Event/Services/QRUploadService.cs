@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using Avalonia.Media.Imaging;
 using QRCoder;
 
-namespace PhotoBooth.UI.Services;
+namespace PhotoBooth.Event.Services;
 
 /// <summary>
 /// Shared service for uploading a photo to the API and generating a QR code

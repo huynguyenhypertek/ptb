@@ -161,7 +161,7 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
                     // 🚀 Pre-fetched URL available — generate QR instantly!
                     System.Diagnostics.Debug.WriteLine("[QR-ReviewPrint] Using pre-fetched Drive URL — instant QR!");
                     using var qrGenerator = new QRCoder.QRCodeGenerator();
-                    var qrData = qrGenerator.CreateQrCode(preFetchedUrl, QRCoder.QRCodeGenerator.ECCLevel.M);
+                    using var qrData = qrGenerator.CreateQrCode(preFetchedUrl, QRCoder.QRCodeGenerator.ECCLevel.M);
                     using var qrCode = new QRCoder.PngByteQRCode(qrData);
                     qrBytes = qrCode.GetGraphic(20, new byte[] { 0, 0, 0 }, new byte[] { 255, 255, 255 });
                     overlayStatus = "📱 Quét mã QR để tải ảnh từ Google Drive";
@@ -227,6 +227,10 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
                         StatusText = overlayStatus ?? "✅ Đã tạo mã QR";
                         // Reload FinalImage inside the UI
                         await LoadFinalImageAsync();
+                    }
+                    else
+                    {
+                        StatusText = "⚠️ Không thể chèn mã QR vào ảnh";
                     }
                 }
             }
