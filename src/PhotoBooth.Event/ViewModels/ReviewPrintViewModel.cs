@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhotoBooth.Core.Interfaces;
@@ -19,6 +20,10 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
     private readonly SessionService _sessionService;
     private readonly IPrintService _printService;
     private readonly CancellationTokenSource _cts = new();
+    private CancellationTokenSource? _idleTimerCts;
+    private bool _isPrinting;
+
+    public int IdleTimeoutMs { get; set; } = 30000; // 30 seconds default
 
     [ObservableProperty]
     private Bitmap? _finalImage;
@@ -47,29 +52,98 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
         _sessionService = sessionService;
         _printService = printService;
 
-        _ = LoadFinalImageAsync();
-
         IsOffline = false;
         SequentialNumber = _sessionService.CurrentSession.SequentialNumber ?? "---";
 
-        _ = GenerateQROverlayAsync(_cts.Token);
+        _ = InitializeAsync();
+    }
+
+    private async Task InitializeAsync()
+    {
+        try
+        {
+            await LoadFinalImageAsync();
+            
+            await GenerateQROverlayAsync(_cts.Token);
+            
+            if (!_cts.Token.IsCancellationRequested)
+            {
+                await StartPrintingCommand.ExecuteAsync(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ERROR] InitializeAsync failed: {ex.Message}");
+        }
+        finally
+        {
+            if (!_cts.IsCancellationRequested)
+            {
+                StartIdleTimer();
+            }
+        }
+    }
+
+    private void StartIdleTimer()
+    {
+        if (_cts.IsCancellationRequested) return;
+
+        _idleTimerCts?.Cancel();
+        _idleTimerCts?.Dispose();
+        _idleTimerCts = new CancellationTokenSource();
+        var token = _idleTimerCts.Token;
+
+        Task.Delay(IdleTimeoutMs, token).ContinueWith(t =>
+        {
+            if (!t.IsCanceled && !token.IsCancellationRequested)
+            {
+                Action triggerAction = () =>
+                {
+                    if (ReturnToStartCommand.CanExecute(null))
+                    {
+                        System.Diagnostics.Debug.WriteLine("[IDLE] Auto-returning to Start due to inactivity.");
+                        ReturnToStartCommand.Execute(null);
+                    }
+                };
+
+                try
+                {
+                    if (Dispatcher.UIThread.CheckAccess())
+                    {
+                        triggerAction();
+                    }
+                    else
+                    {
+                        Dispatcher.UIThread.Post(triggerAction);
+                    }
+                }
+                catch
+                {
+                    // Fallback for tests
+                    triggerAction();
+                }
+            }
+        }, TaskScheduler.Default);
     }
 
     [RelayCommand]
     private void IncreaseCopies()
     {
+        StartIdleTimer(); // Reset timer on activity
         if (PrintCopies < 10) PrintCopies++;
     }
 
     [RelayCommand]
     private void DecreaseCopies()
     {
+        StartIdleTimer(); // Reset timer on activity
         if (PrintCopies > 1) PrintCopies--;
     }
 
     [RelayCommand]
     private void ReturnToStart()
     {
+        _idleTimerCts?.Cancel();
         _sessionService.StartNewSession();
         _navigationService.NavigateTo<StartViewModel>();
     }
@@ -103,25 +177,64 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
         }
     }
 
-    [RelayCommand]
-    private async Task StartPrintingAsync()
+    private void UpdatePrintStatus(string text, int progress = -1)
     {
         try
         {
-            StatusText = "Đang chuẩn bị in...";
-            Progress = 50;
+            if (Dispatcher.UIThread.CheckAccess())
+            {
+                StatusText = text;
+                if (progress >= 0) Progress = progress;
+            }
+            else
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    StatusText = text;
+                    if (progress >= 0) Progress = progress;
+                });
+            }
+        }
+        catch
+        {
+            StatusText = text;
+            if (progress >= 0) Progress = progress;
+        }
+    }
+
+    [RelayCommand]
+    private async Task StartPrintingAsync()
+    {
+        if (_isPrinting) return;
+        _isPrinting = true;
+
+        _idleTimerCts?.Cancel(); // Stop timer during printing
+
+        try
+        {
+            UpdatePrintStatus("Đang gửi lệnh in...", 50);
             
             if (_sessionService.CurrentSession.FinalImagePath != null)
             {
-                await _printService.PrintImageAsync(
+                var success = await _printService.PrintImageAsync(
                     _sessionService.CurrentSession.FinalImagePath,
                     "default_printer", 
                     PrintCopies, 
                     _cts.Token);
+                
+                if (success)
+                {
+                    UpdatePrintStatus("Đã gửi lệnh in", 100);
+                }
+                else
+                {
+                    UpdatePrintStatus("⚠️ Lỗi máy in");
+                }
             }
-            
-            StatusText = "Đã gửi lệnh in";
-            Progress = 100;
+            else
+            {
+                UpdatePrintStatus("⚠️ Không tìm thấy ảnh", 0);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -130,6 +243,15 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[ERROR] StartPrintingAsync failed: {ex.Message}");
+            UpdatePrintStatus("⚠️ Lỗi máy in");
+        }
+        finally
+        {
+            _isPrinting = false;
+            if (!_cts.IsCancellationRequested)
+            {
+                StartIdleTimer(); // Restart timer after printing
+            }
         }
     }
 
@@ -258,6 +380,8 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
+        _idleTimerCts?.Cancel();
+        _idleTimerCts?.Dispose();
         _cts.Cancel();
         
         FinalImage?.Dispose();

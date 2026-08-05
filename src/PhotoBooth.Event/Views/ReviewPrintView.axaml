@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoBooth.Event.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
+             x:Class="PhotoBooth.Event.Views.ReviewPrintView"
+             x:DataType="vm:ReviewPrintViewModel"
+             Background="#1a1a2e">
+
+    <Grid>
+        <!-- Background / Status -->
+        <TextBlock Text="{Binding StatusText}" 
+                   HorizontalAlignment="Center" 
+                   VerticalAlignment="Top" 
+                   Margin="20"
+                   FontSize="24" 
+                   Foreground="White" />
+                   
+        <TextBlock HorizontalAlignment="Left" 
+                   VerticalAlignment="Top" 
+                   Margin="20"
+                   FontSize="24" 
+                   Foreground="White"
+                   Text="{Binding SequentialNumber}" />
+
+        <!-- Final Image Preview -->
+        <Viewbox Stretch="Uniform" Margin="60,100,60,150">
+            <Image Source="{Binding FinalImage}" 
+                   HorizontalAlignment="Center" 
+                   VerticalAlignment="Center" />
+        </Viewbox>
+
+        <!-- Controls -->
+        <StackPanel HorizontalAlignment="Center" 
+                    VerticalAlignment="Bottom" 
+                    Margin="40" 
+                    Orientation="Horizontal" 
+                    Spacing="20">
+                    
+            <!-- Copies Selection -->
+            <Button Content="-" 
+                    Command="{Binding DecreaseCopiesCommand}"
+                    FontSize="24" Padding="20,10" />
+            
+            <TextBlock Text="{Binding PrintCopies}" 
+                       FontSize="30" Foreground="White" 
+                       VerticalAlignment="Center" Margin="10,0"/>
+            
+            <Button Content="+" 
+                    Command="{Binding IncreaseCopiesCommand}"
+                    FontSize="24" Padding="20,10" />
+                    
+            <Button Content="In thêm" 
+                    Command="{Binding StartPrintingCommand}" 
+                    FontSize="24" 
+                    Padding="30,20" 
+                    Background="#0055ff"
+                    Foreground="White" />
+                    
+            <Button Content="Hoàn tất" 
+                    Command="{Binding ReturnToStartCommand}" 
+                    FontSize="24" 
+                    Padding="40,20" 
+                    Background="#008800"
+                    Foreground="White" />
+        </StackPanel>
+    </Grid>
+
+</UserControl>
