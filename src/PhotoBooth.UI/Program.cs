@@ -19,6 +19,20 @@ sealed class Program
         
         DeviceConfig.ParseArgs(args);
 
+        // ── Global exception handlers ──────────────────────────────────────────────
+        // Without these, any unhandled crash terminates the process silently and the
+        // Admin shows "Đã dừng" with no diagnostic trace in the logs.
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+        {
+            Console.WriteLine($"[CRASH] Unhandled exception (fatal={e.IsTerminating}): {e.ExceptionObject}");
+        };
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            Console.WriteLine($"[CRASH] Unobserved task exception: {e.Exception}");
+            e.SetObserved(); // Prevent process termination from fire-and-forget tasks
+        };
+        // ──────────────────────────────────────────────────────────────────────────
+
         // Cleanup session folders older than 72 hours to prevent disk exhaustion
         // during long-running kiosk operation. Only deletes the session directories,
         // not the photos inside Google Drive (those sync independently).

@@ -7,8 +7,7 @@ using Xunit;
 namespace PhotoBooth.Tests.Services;
 
 /// <summary>
-/// Tests for ImageCompositeService.OverlaySequentialNumber.
-/// Q1: Covers guard clauses, edge cases, and backup behavior.
+/// Tests for ImageCompositeService.OverlaySequentialNumber and OverlayQrCode.
 /// </summary>
 public class ImageCompositeServiceOverlayTests : IDisposable
 {
@@ -33,85 +32,67 @@ public class ImageCompositeServiceOverlayTests : IDisposable
         return path;
     }
 
+    private byte[] CreateTestPngBytes(int width = 200, int height = 200)
+    {
+        using var img = new Mat(height, width, MatType.CV_8UC3, new Scalar(255, 255, 255));
+        Cv2.Rectangle(img, new Rect(10, 10, width - 20, height - 20), new Scalar(0, 0, 0), -1);
+        Cv2.ImEncode(".png", img, out byte[] buf);
+        return buf;
+    }
+
     [Fact]
-    public void OverlaySequentialNumber_NullNumber_ReturnsNull()
+    public void OverlaySequentialNumber_NullNumber_ReturnsFalse()
     {
         var path = CreateTestImage();
         var result = ImageCompositeService.OverlaySequentialNumber(path, null!);
-        Assert.Null(result);
+        Assert.False(result);
     }
 
     [Fact]
-    public void OverlaySequentialNumber_EmptyNumber_ReturnsNull()
+    public void OverlaySequentialNumber_EmptyNumber_ReturnsFalse()
     {
         var path = CreateTestImage();
         var result = ImageCompositeService.OverlaySequentialNumber(path, "");
-        Assert.Null(result);
+        Assert.False(result);
     }
 
     [Fact]
-    public void OverlaySequentialNumber_NonExistentFile_ReturnsNull()
+    public void OverlaySequentialNumber_NonExistentFile_ReturnsFalse()
     {
         var path = Path.Combine(_tempDir, "nonexistent.png");
         var result = ImageCompositeService.OverlaySequentialNumber(path, "0516-001");
-        Assert.Null(result);
+        Assert.False(result);
     }
 
     [Fact]
-    public void OverlaySequentialNumber_NullImagePath_ReturnsNull()
+    public void OverlaySequentialNumber_NullImagePath_ReturnsFalse()
     {
         var result = ImageCompositeService.OverlaySequentialNumber(null!, "0516-001");
-        Assert.Null(result);
+        Assert.False(result);
     }
 
     [Fact]
-    public void OverlaySequentialNumber_ValidInput_CreatesBackup()
+    public void OverlaySequentialNumber_ValidInput_ReturnsTrueAndModifies()
     {
         var path = CreateTestImage();
+        var originalBytes = File.ReadAllBytes(path);
+
         var result = ImageCompositeService.OverlaySequentialNumber(path, "0516-001");
 
-        Assert.NotNull(result);
-        Assert.True(File.Exists(result), "Backup file should exist");
-        Assert.Contains("_original", result);
-    }
-
-    [Fact]
-    public void OverlaySequentialNumber_ValidInput_ModifiesOriginalFile()
-    {
-        var path = CreateTestImage();
-        var originalBytes = File.ReadAllBytes(path);
-
-        ImageCompositeService.OverlaySequentialNumber(path, "0516-001");
-
+        Assert.True(result);
         var modifiedBytes = File.ReadAllBytes(path);
-        // Modified image should be different from original (text was drawn)
         Assert.NotEqual(originalBytes, modifiedBytes);
-    }
-
-    [Fact]
-    public void OverlaySequentialNumber_ValidInput_BackupMatchesOriginal()
-    {
-        var path = CreateTestImage();
-        var originalBytes = File.ReadAllBytes(path);
-
-        var backupPath = ImageCompositeService.OverlaySequentialNumber(path, "0516-001");
-
-        Assert.NotNull(backupPath);
-        var backupBytes = File.ReadAllBytes(backupPath!);
-        Assert.Equal(originalBytes, backupBytes);
     }
 
     [Fact]
     public void OverlaySequentialNumber_TinyImage_SkipsOverlay()
     {
-        // Q2: Images smaller than 100x100 should skip overlay — F1: no backup created
         var path = CreateTestImage(50, 50);
         var originalBytes = File.ReadAllBytes(path);
 
         var result = ImageCompositeService.OverlaySequentialNumber(path, "0516-001");
 
-        // F1: No backup should be created for tiny images (no modification performed)
-        Assert.Null(result);
+        Assert.False(result);
         var currentBytes = File.ReadAllBytes(path);
         Assert.Equal(originalBytes, currentBytes);
     }
@@ -128,7 +109,6 @@ public class ImageCompositeServiceOverlayTests : IDisposable
     [Fact]
     public void OverlaySequentialNumber_Layout6Size_DoesNotThrow()
     {
-        // Layout 6 typical size: 664x990
         var path = CreateTestImage(664, 990);
         var exception = Record.Exception(() =>
             ImageCompositeService.OverlaySequentialNumber(path, "0516-042"));
@@ -138,7 +118,6 @@ public class ImageCompositeServiceOverlayTests : IDisposable
     [Fact]
     public void OverlaySequentialNumber_Layout2Size_DoesNotThrow()
     {
-        // Layout 2 typical size: 682x2048
         var path = CreateTestImage(682, 2048);
         var exception = Record.Exception(() =>
             ImageCompositeService.OverlaySequentialNumber(path, "0516-001"));
@@ -148,14 +127,12 @@ public class ImageCompositeServiceOverlayTests : IDisposable
     [Fact]
     public void OverlaySequentialNumber_TextWiderThanImage_DoesNotThrow()
     {
-        // F4: Extremely long sequential number that exceeds image width
-        var path = CreateTestImage(120, 120); // Just above 100x100 threshold
+        var path = CreateTestImage(120, 120);
         var exception = Record.Exception(() =>
             ImageCompositeService.OverlaySequentialNumber(path, "0516-999999999999999"));
         Assert.Null(exception);
     }
 
-    // F3: Helper for 4-channel BGRA images (matching production Compose output)
     private string CreateTestImageBGRA(int width = 800, int height = 600)
     {
         var path = Path.Combine(_tempDir, $"test_bgra_{Guid.NewGuid():N}.png");
@@ -167,7 +144,6 @@ public class ImageCompositeServiceOverlayTests : IDisposable
     [Fact]
     public void OverlaySequentialNumber_BGRAImage_DoesNotThrow()
     {
-        // F3: Production images from Compose() are BGRA (CV_8UC4)
         var path = CreateTestImageBGRA();
         var exception = Record.Exception(() =>
             ImageCompositeService.OverlaySequentialNumber(path, "0516-001"));
@@ -175,20 +151,106 @@ public class ImageCompositeServiceOverlayTests : IDisposable
     }
 
     [Fact]
-    public void OverlaySequentialNumber_BGRAImage_CreatesBackupAndModifies()
+    public void OverlaySequentialNumber_BGRAImage_ReturnsTrueAndModifies()
     {
-        // F3: Ensure overlay works correctly on 4-channel images
         var path = CreateTestImageBGRA();
         var originalBytes = File.ReadAllBytes(path);
 
-        var backupPath = ImageCompositeService.OverlaySequentialNumber(path, "0516-042");
+        var result = ImageCompositeService.OverlaySequentialNumber(path, "0516-042");
 
-        Assert.NotNull(backupPath);
-        Assert.True(File.Exists(backupPath!), "Backup should exist for BGRA image");
-        var backupBytes = File.ReadAllBytes(backupPath!);
-        Assert.Equal(originalBytes, backupBytes);
-
+        Assert.True(result);
         var modifiedBytes = File.ReadAllBytes(path);
         Assert.NotEqual(originalBytes, modifiedBytes);
+    }
+
+    [Fact]
+    public void OverlayQrCode_NullQrBytes_ReturnsFalse()
+    {
+        var path = CreateTestImage();
+        var result = ImageCompositeService.OverlayQrCode(path, null!);
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void OverlayQrCode_EmptyQrBytes_ReturnsFalse()
+    {
+        var path = CreateTestImage();
+        var result = ImageCompositeService.OverlayQrCode(path, Array.Empty<byte>());
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void OverlayQrCode_NonExistentFile_ReturnsFalse()
+    {
+        var path = Path.Combine(_tempDir, "nonexistent.png");
+        var qrBytes = CreateTestPngBytes();
+        var result = ImageCompositeService.OverlayQrCode(path, qrBytes);
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void OverlayQrCode_ValidInput_ReturnsTrueAndModifies()
+    {
+        var path = CreateTestImage();
+        var originalBytes = File.ReadAllBytes(path);
+        var qrBytes = CreateTestPngBytes();
+
+        var result = ImageCompositeService.OverlayQrCode(path, qrBytes);
+
+        Assert.True(result);
+        var modifiedBytes = File.ReadAllBytes(path);
+        Assert.NotEqual(originalBytes, modifiedBytes);
+    }
+
+    [Fact]
+    public void OverlayQrCode_BGRAImage_ReturnsTrueAndModifies()
+    {
+        var path = CreateTestImageBGRA();
+        var originalBytes = File.ReadAllBytes(path);
+        var qrBytes = CreateTestPngBytes();
+
+        var result = ImageCompositeService.OverlayQrCode(path, qrBytes);
+
+        Assert.True(result);
+        var modifiedBytes = File.ReadAllBytes(path);
+        Assert.NotEqual(originalBytes, modifiedBytes);
+    }
+
+    [Fact]
+    public void OverlayQrCode_TinyImage_SkipsOverlay()
+    {
+        var path = CreateTestImage(50, 50);
+        var originalBytes = File.ReadAllBytes(path);
+        var qrBytes = CreateTestPngBytes();
+
+        var result = ImageCompositeService.OverlayQrCode(path, qrBytes);
+
+        Assert.False(result);
+        var currentBytes = File.ReadAllBytes(path);
+        Assert.Equal(originalBytes, currentBytes);
+    }
+
+    [Fact]
+    public void OverlayQrCode_MemoryStability_ShouldNotGrowUnboundedly()
+    {
+        // 1000x1000 base image as required by AC 6
+        var path = CreateTestImage(1000, 1000);
+        var qrBytes = CreateTestPngBytes(200, 200);
+
+        long initialMemory = GC.GetTotalMemory(true);
+        
+        // Loop multiple times to ensure OpenCV Mat objects are disposed and memory doesn't leak
+        for (int i = 0; i < 50; i++)
+        {
+            var result = ImageCompositeService.OverlayQrCode(path, qrBytes);
+            Assert.True(result);
+        }
+
+        long finalMemory = GC.GetTotalMemory(true);
+        long memoryDifference = finalMemory - initialMemory;
+
+        // Allowing some threshold (e.g. 5 MB) for garbage collector overhead, 
+        // but it should definitely not be a leak of 50 images * 4MB (200MB)
+        Assert.True(memoryDifference < 10 * 1024 * 1024, $"Memory leak detected: grew by {memoryDifference / 1024 / 1024} MB");
     }
 }

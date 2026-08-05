@@ -1,0 +1,123 @@
+# PhotoBooth.Event — Sprint Status
+# Phần mềm UI dành riêng cho sự kiện (4 màn hình, đơn giản hoá)
+generated: 2026-08-04
+project: photobooth-event-ui
+project_key: PBE
+tracking_system: file-system
+story_location: "_bmad-output/stories"
+
+# ============================================================
+# REUSE POLICY
+# ============================================================
+# project_reference  → dùng thẳng qua .csproj reference, không copy code
+# copy_and_simplify  → copy từ PhotoBooth.UI, xoá phần không cần
+# write_new          → viết mới hoàn toàn
+# ============================================================
+reuse_map:
+  PhotoBooth.Core:           project_reference   # Interfaces, Models
+  PhotoBooth.Infrastructure: project_reference   # CameraService, ImageCompositeService, ImageCropService, PrintService
+  PhotoBooth.API:            project_reference   # Backend không đổi, dùng chung
+  NavigationService:         copy_and_simplify   # Từ PhotoBooth.UI/Services/NavigationService.cs
+  SessionService:            copy_and_simplify   # Từ PhotoBooth.UI/Services/SessionService.cs (bỏ payment, sticker, layout)
+  HttpService:               copy_and_simplify   # Từ PhotoBooth.UI/Services/HttpService.cs
+  DeviceConfig:              copy_and_simplify   # Từ PhotoBooth.UI/DeviceConfig.cs (bỏ layout/payment args)
+  StartViewModel:            copy_and_simplify   # Từ PhotoBooth.UI/ViewModels/StartViewModel.cs (bỏ payment check)
+  CaptureViewModel:          copy_and_simplify   # Từ PhotoBooth.UI/ViewModels/CaptureViewModel.cs (hardcode 6 ảnh/1 frame)
+  PhotoSelectViewModel:      copy_and_simplify   # Từ PhotoBooth.UI/ViewModels/PhotoSelectionViewModel.cs (chọn 4/6)
+  ReviewPrintViewModel:      write_new           # Gộp ConfirmPrintVM + PrintingVM + ThankYouVM
+  StartView.axaml:           write_new           # UI placeholder (design sau)
+  CaptureView.axaml:         write_new           # UI placeholder (design sau)
+  PhotoSelectView.axaml:     write_new           # UI placeholder (design sau)
+  ReviewPrintView.axaml:     write_new           # UI placeholder (design sau)
+
+development_status:
+
+  # Epic 0: Project Foundation — Nền tảng dự án
+  # Tạo project PhotoBooth.Event, cấu hình dependencies, navigation, session, config
+  # ✅ P0 — Tất cả epics phụ thuộc vào E0
+  epic-0: done
+  E0-S1-create-project-structure: done
+  # reuse: write_new — tạo PhotoBooth.Event.csproj, reference Core + Infrastructure + API
+  E0-S2-navigation-service: done
+  # reuse: copy_and_simplify — từ PhotoBooth.UI/Services/NavigationService.cs
+  E0-S3-session-service-simplified: done
+  # reuse: copy_and_simplify — từ PhotoBooth.UI/Services/SessionService.cs, bỏ: payment, sticker, layout, GC.Collect
+  E0-S4-device-config-args: done
+  # reuse: copy_and_simplify — từ PhotoBooth.UI/DeviceConfig.cs, bỏ: --layoutId, --paymentMode args
+  E0-S5-main-window-viewmodel: done
+  # reuse: write_new — MainWindowViewModel đơn giản, chỉ register 4 ViewModels
+  epic-0-retrospective: done
+
+  # Epic 1: Start Screen — Màn hình bắt đầu
+  # Màn hình chào, nút bắt đầu, không có payment hay layout selection
+  # ⚠ P0 — Điểm vào duy nhất của app
+  epic-1: done
+  E1-S1-start-viewmodel: done
+  # reuse: copy_and_simplify — từ PhotoBooth.UI/ViewModels/StartViewModel.cs, bỏ: device lock check, payment
+  E1-S2-start-view-ui: done
+  # reuse: write_new — XAML placeholder, design sau
+  epic-1-retrospective: optional
+
+  # Epic 2: Capture Screen — Màn hình chụp ảnh
+  # Chụp 6 ảnh, layout + frame hardcode, countdown configurable, camera preview
+  # ⚠ P0 — Core feature: dùng lại CameraService (project_reference)
+  epic-2: done
+  E2-S1-capture-viewmodel-6-photos: done
+  # reuse: copy_and_simplify — từ PhotoBooth.UI/ViewModels/CaptureViewModel.cs
+  #   GIỮ: camera init, StartPreview, StopPreview, CapturePhoto, countdown logic
+  #   BỎ:  layout selection, reconnect logic phức tạp, multi-layout
+  #         (_shootingCts reconnect-driven cancel pattern bỏ — GIỮ _shootingCts cho Skip command)
+  #   THAY: hardcode TotalPhotos=6, hardcode frame path
+  E2-S2-camera-preview-integration: done
+  # reuse: project_reference — CameraService từ PhotoBooth.Infrastructure (không đụng vào)
+  E2-S3-countdown-shooting-sequence: done
+  # reuse: copy_and_simplify — countdown timer logic từ CaptureViewModel cũ
+  E2-S4-photo-capture-storage: done
+  # reuse: project_reference — CameraService.CapturePhoto() + ImageCropService từ Infrastructure
+  epic-2-retrospective: optional
+
+  # Epic 3: Photo Selection Screen — Màn hình chọn ảnh
+  # Hiện 6 ảnh đã chụp, user chọn 4 ảnh để ghép vào frame
+  # ⚠ P0 — User chọn ảnh đẹp nhất trước khi in
+  epic-3: done
+  E3-S1-photo-select-viewmodel: done
+  # reuse: copy_and_simplify — từ PhotoBooth.UI/ViewModels/PhotoSelectionViewModel.cs
+  #   GIỮ: selection logic, MaxSelection=4, toggle selected
+  #   BỎ:  sticker, upload to API fire-and-forget, QR prefetch màn riêng
+  #   THAY: navigate to ReviewPrintViewModel thay vì ConfirmPrintViewModel
+  E3-S2-photo-grid-selection-ui: done
+  # reuse: write_new — XAML placeholder, design sau
+  E3-S3-frame-composite-preview: done
+  # reuse: project_reference — ImageCompositeService từ PhotoBooth.Infrastructure
+  epic-3-retrospective: optional
+
+  # Epic 4: Review & Print Screen — Màn hình review + in ảnh
+  # Hiện ảnh ghép hoàn chỉnh (4 ảnh + frame + QR embedded), in song song, nút về màn 1
+  # ⚠ P0 — Kết thúc flow, QR code in lên ảnh, không cần màn QR riêng
+  epic-4: done
+  E4-S1-review-print-viewmodel: done
+  # reuse: write_new — gộp logic từ ConfirmPrintViewModel + PrintingViewModel + ThankYouViewModel
+  E4-S2-final-composite-with-qr: done
+  # reuse: project_reference — ImageCompositeService từ Infrastructure
+  #   MỞ RỘNG: thêm QR overlay step sau khi composite xong
+  E4-S3-qr-generate-embed-image: done
+  # reuse: copy_and_simplify — QR generation từ PhotoBooth.UI/ViewModels/ThankYouViewModel.cs
+  #   THAY: thay vì hiện QR trên màn → vẽ QR lên ảnh composite bằng OpenCV
+  E4-S4-parallel-printing: done
+  # reuse: project_reference — PrintService từ PhotoBooth.Infrastructure
+  #   THAY: in ngay khi vào màn (không chờ confirm riêng)
+  E4-S5-back-to-start-navigation: done
+  # reuse: write_new — SessionService.StartNewSession() + NavigateTo<StartViewModel>
+  epic-4-retrospective: optional
+
+  # Epic 5: Admin Integration — Tích hợp Admin
+  # Thêm option launch PhotoBooth.Event từ DeviceLauncher, build & package script
+  # P1 — Cần để vận hành tại sự kiện
+  epic-5: done
+  E5-S1-add-event-to-solution: done
+  # reuse: write_new — thêm PhotoBooth.Event vào PhotoBooth.slnx
+  E5-S2-admin-launcher-event-mode: done
+  # reuse: copy_and_simplify — DeviceLauncherViewModel thêm mode toggle (UI / Event)
+  E5-S3-build-package-script: done
+  # reuse: copy_and_simplify — từ build-mac-app.sh, thêm build PhotoBooth.Event
+  epic-5-retrospective: optional

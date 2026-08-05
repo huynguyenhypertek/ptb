@@ -116,10 +116,19 @@ using (var scope = app.Services.CreateScope())
         var uploadsDir = Path.Combine(app.Environment.ContentRootPath, "uploads", "frames");
         Directory.CreateDirectory(uploadsDir);
         
-        // Copy default frames from UI assets
-        // Use finish/ frames (with transparent photo holes) instead of frames/ (opaque)
-        // This ensures API-served frames work correctly for preview overlay and composition
-        var uiAssetsDir = Path.Combine(app.Environment.ContentRootPath, "..", "PhotoBooth.UI", "Assets", "finish");
+        // Tìm thư mục chứa frame assets — hoạt động cả dev lẫn packaged .app
+        // Dev mode:    src/PhotoBooth.API/../PhotoBooth.UI/Assets/finish
+        // Packaged:    MacOS/api/../ui_assets/finish  (copy bởi build-mac-app.sh)
+        var contentRoot = app.Environment.ContentRootPath;
+        var candidateAssetDirs = new[]
+        {
+            Path.Combine(contentRoot, "..", "PhotoBooth.UI", "Assets", "finish"),  // dev
+            Path.Combine(contentRoot, "ui_assets", "finish"),                       // packaged
+            Path.Combine(contentRoot, "..", "ui_assets", "finish"),                 // packaged alt
+        };
+        var uiAssetsDir = candidateAssetDirs.Select(Path.GetFullPath)
+                                             .FirstOrDefault(Directory.Exists) ?? candidateAssetDirs[0];
+
         var defaultFrames = new[]
         {
             new { Name = "Khung 2 ảnh - Mẫu 1", Layout = "layout2", File = "nen2_1.png" },
@@ -143,7 +152,7 @@ using (var scope = app.Services.CreateScope())
             }
         }
         db.SaveChanges();
-        Console.WriteLine("[SEED] Default frames created");
+        Console.WriteLine($"[SEED] Default frames created from: {uiAssetsDir}");
     }
 
     // Seed subscription plans
@@ -194,6 +203,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseStaticFiles();
 app.MapControllers();
+
+// Health check endpoint for Admin app startup detection
+app.MapGet("/api/health", () => Results.Ok(new { status = "ok", time = DateTime.UtcNow }));
 
 // Serve photo download page at /photos/{code}
 app.MapGet("/photos/{code}", async context =>

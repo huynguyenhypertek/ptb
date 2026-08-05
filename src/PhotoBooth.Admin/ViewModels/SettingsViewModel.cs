@@ -27,6 +27,12 @@ public partial class SettingsViewModel : ObservableObject
     private string _printerName = "";
 
     [ObservableProperty]
+    private int _countdownSeconds = 3;
+
+    [ObservableProperty]
+    private string _eventName = "DONGFEST";
+
+    [ObservableProperty]
     private string _statusMessage = "";
 
     [ObservableProperty]
@@ -54,6 +60,8 @@ public partial class SettingsViewModel : ObservableObject
         AppsScriptUrl = settingsService.Settings.AppsScriptUrl;
         EnablePrinting = settingsService.Settings.EnablePrinting;
         PrinterName = settingsService.Settings.PrinterName;
+        CountdownSeconds = settingsService.Settings.CountdownSeconds;
+        EventName = settingsService.Settings.EventName;
 
         UpdateFolderStatus();
     }
@@ -143,6 +151,8 @@ public partial class SettingsViewModel : ObservableObject
         _settingsService.Settings.AppsScriptUrl = AppsScriptUrl;
         _settingsService.Settings.EnablePrinting = EnablePrinting;
         _settingsService.Settings.PrinterName = PrinterName;
+        _settingsService.Settings.CountdownSeconds = CountdownSeconds;
+        _settingsService.Settings.EventName = EventName;
 
         if (_settingsService.Save())
         {

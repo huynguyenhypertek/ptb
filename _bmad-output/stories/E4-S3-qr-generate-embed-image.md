@@ -95,6 +95,8 @@ Gemini 3.1 Pro (High)
 - Integrated OpenCV using `ImageCompositeService.OverlayQrCode` and securely reloaded `FinalImage` with proper `Dispose()`.
 - [AI-Review] Fixed HIGH performance issue: Moved synchronous `OverlayQrCode` and `LoadFinalImage` I/O to background threads in `ReviewPrintViewModel`.
 - [AI-Review] Fixed HIGH missing test issue: Added test for `LoadFinalImageAsync` in `ReviewPrintViewModelTests`.
+- [AI-Review] Fixed LOW memory leak potential: Added missing `using` statements for `QRCodeData` in all QR services.
+- [AI-Review] Fixed LOW UX issue: Updated `StatusText` to show error if OpenCV overlay operation fails.
 
 ### File List
 - `src/PhotoBooth.UI/Services/GoogleDriveQRService.cs`

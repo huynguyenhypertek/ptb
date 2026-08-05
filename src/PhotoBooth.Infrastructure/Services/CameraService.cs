@@ -21,6 +21,7 @@ public class CameraService : ICameraService
     private readonly object _lock = new();
     
     public bool IsRunning => _isRunning;
+    public bool IsInitialized => _capture != null && _capture.IsOpened();
     
     public event EventHandler<byte[]>? FrameReady;
     public event EventHandler? CameraError;
@@ -57,6 +58,24 @@ public class CameraService : ICameraService
             Console.WriteLine($"Error initializing camera: {ex.Message}");
             return false;
         }
+    }
+
+    public void Deinitialize()
+    {
+        if (_isDisposed) return;
+
+        // Stop preview first to ensure no background task is using _capture
+        if (_isRunning)
+        {
+            StopPreview();
+        }
+
+        lock (_lock)
+        {
+            _capture?.Dispose();
+            _capture = null;
+        }
+        Console.WriteLine("[CAMERA] Deinitialized hardware handle.");
     }
 
     /// <summary>
@@ -231,7 +250,7 @@ public class CameraService : ICameraService
         Console.WriteLine("Camera preview stopped");
     }
 
-    public string CapturePhoto(string outputDirectory)
+    public string CapturePhoto(string outputDirectory, string? fileName = null)
     {
         if (_isDisposed) throw new ObjectDisposedException(nameof(CameraService));
         if (_capture == null || !_capture.IsOpened())
@@ -273,8 +292,11 @@ public class CameraService : ICameraService
             
             using var cropped = new Mat(frame, new Rect(cropX, cropY, cropW, cropH));
             
-            var filename = $"photo_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg";
-            var path = Path.Combine(outputDirectory, filename);
+            var finalFileName = string.IsNullOrWhiteSpace(fileName) 
+                ? $"photo_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg" 
+                : fileName;
+                
+            var path = Path.Combine(outputDirectory, finalFileName);
             
             // Save high quality JPEG
             Cv2.ImWrite(path, cropped, new ImageEncodingParam(ImwriteFlags.JpegQuality, 95));

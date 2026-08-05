@@ -36,7 +36,7 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
     private int _currentPhotoIndex;
 
     [ObservableProperty]
-    private int _totalPhotos = 6;
+    private int _totalPhotos = 8;
 
     [ObservableProperty]
     private int _countdown;
@@ -63,7 +63,7 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
     private string _statusMessage = "Connecting camera...";
 
     [ObservableProperty]
-    private int _countdownDuration = 1; // 1-second countdown per photo
+    private int _countdownDuration = DeviceConfig.CountdownSeconds;
 
     private bool _disposed;
     private volatile bool _isRenderingFrame;
@@ -268,7 +268,7 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
             StatusMessage = "Complete! Transitioning...";
             await Task.Delay(TransitionDelayMs, token);
             if (_disposed) return; // Re-check after await
-            await Task.Run(() => _cameraService.StopPreview());
+            await Task.Run(() => _cameraService.Deinitialize());
             _navigationService.NavigateTo<PhotoSelectViewModel>();
         }
         catch (OperationCanceledException)
@@ -307,7 +307,13 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
             var photoPath = await Task.Run(() => 
             {
                 token.ThrowIfCancellationRequested();
-                return _cameraService.CapturePhoto(_photosDirectory);
+                var sessionDir = _sessionService.CurrentSession.SessionDirectory;
+                var sessionName = _sessionService.CurrentSession.SessionFolderName;
+                var photoIndex = CapturedPhotos.Count + 1;
+                var customFileName = $"{DeviceConfig.EventName}_{sessionName}_{photoIndex}.jpg";
+                var path = _cameraService.CapturePhoto(sessionDir, customFileName);
+                token.ThrowIfCancellationRequested();
+                return path;
             }, token);
 
             // Keep flash visible briefly
@@ -315,9 +321,6 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
             IsFlashing = false;
 
             token.ThrowIfCancellationRequested();
-
-            // Crop photo — hardcoded layout6 dimensions (659x720, offset 50px right)
-            // Removed ImageCropService per E2-S3 constraints (handled in E2-S4)
 
             CapturedPhotos.Add(photoPath);
             _sessionService.AddCapturedPhoto(photoPath);
@@ -361,7 +364,7 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
     {
         if (_disposed) return;
         _shootingCts?.Cancel();
-        await Task.Run(() => _cameraService.StopPreview());
+        await Task.Run(() => _cameraService.Deinitialize());
         _navigationService.NavigateTo<PhotoSelectViewModel>();
     }
 
@@ -383,8 +386,8 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
         _shootingCts?.Dispose();
         _shootingCts = null;
 
-        // 2. Stop preview — wrapped for app shutdown race safety
-        try { _cameraService.StopPreview(); }
+        // 2. Stop preview and release hardware — wrapped for app shutdown race safety
+        try { _cameraService.Deinitialize(); }
         catch (ObjectDisposedException) { }
 
         // 3. Unsubscribe ONLY FrameReady (CameraError was never subscribed)

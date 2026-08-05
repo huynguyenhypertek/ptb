@@ -11,6 +11,8 @@ public class AppSettings
     public string AppsScriptUrl { get; set; } = "";
     public bool EnablePrinting { get; set; } = false;
     public string PrinterName { get; set; } = "";
+    public int CountdownSeconds { get; set; } = 3;
+    public string EventName { get; set; } = "DONGFEST";
 }
 
 public class SettingsService

@@ -1,0 +1,83 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoBooth.Event.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
+             x:Class="PhotoBooth.Event.Views.CaptureView"
+             x:DataType="vm:CaptureViewModel"
+             Background="#1a1a2e">
+
+    <Grid>
+        <!-- Background / Status -->
+        <TextBlock Text="{Binding StatusMessage}" 
+                   HorizontalAlignment="Center" 
+                   VerticalAlignment="Top" 
+                   Margin="20"
+                   FontSize="24" 
+                   Foreground="White" />
+                   
+        <TextBlock HorizontalAlignment="Left" 
+                   VerticalAlignment="Top" 
+                   Margin="20"
+                   FontSize="24" 
+                   Foreground="White">
+            <TextBlock.Text>
+                <MultiBinding StringFormat="Photo {0} / {1}">
+                    <Binding Path="CurrentPhotoIndex" />
+                    <Binding Path="TotalPhotos" />
+                </MultiBinding>
+            </TextBlock.Text>
+        </TextBlock>
+
+        <!-- Camera Preview -->
+        <Viewbox Stretch="Uniform" Margin="60" IsVisible="{Binding IsCameraReady}">
+            <Image Source="{Binding CameraPreview}" 
+                   HorizontalAlignment="Center" 
+                   VerticalAlignment="Center" />
+        </Viewbox>
+
+        <!-- Flash Effect -->
+        <Rectangle Fill="White" 
+                   IsVisible="{Binding IsFlashing}" 
+                   Opacity="0.8" 
+                   HorizontalAlignment="Stretch" 
+                   VerticalAlignment="Stretch" />
+
+        <!-- Countdown -->
+        <TextBlock Text="{Binding Countdown}" 
+                   IsVisible="{Binding IsCountingDown}" 
+                   FontSize="200" 
+                   FontWeight="Bold" 
+                   Foreground="White"
+                   HorizontalAlignment="Center" 
+                   VerticalAlignment="Center">
+            <!-- Basic drop shadow for visibility over video feed -->
+            <TextBlock.Effect>
+                <DropShadowEffect BlurRadius="10" Color="Black" Opacity="0.8" OffsetX="5" OffsetY="5" />
+            </TextBlock.Effect>
+        </TextBlock>
+
+        <!-- Controls -->
+        <StackPanel HorizontalAlignment="Center" 
+                    VerticalAlignment="Bottom" 
+                    Margin="40" 
+                    Orientation="Horizontal" 
+                    Spacing="20">
+            <Button Content="Start Capture" 
+                    Command="{Binding StartShootingSequenceCommand}" 
+                    IsVisible="{Binding !IsShootingInProgress}"
+                    IsEnabled="{Binding IsCameraReady}"
+                    FontSize="24" 
+                    Padding="40,20" />
+                    
+            <Button Content="Skip" 
+                    Command="{Binding SkipCommand}" 
+                    IsVisible="{Binding IsShootingInProgress}"
+                    FontSize="24" 
+                    Padding="40,20" 
+                    Background="#880000" />
+        </StackPanel>
+    </Grid>
+
+</UserControl>

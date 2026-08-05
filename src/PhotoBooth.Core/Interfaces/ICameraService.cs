@@ -11,6 +11,11 @@ public interface ICameraService : IDisposable
     bool Initialize(int deviceIndex = 0);
     
     /// <summary>
+    /// Releases the camera hardware handle so it is fully turned off.
+    /// </summary>
+    void Deinitialize();
+    
+    /// <summary>
     /// Starts the camera preview.
     /// </summary>
     void StartPreview();
@@ -23,7 +28,7 @@ public interface ICameraService : IDisposable
     /// <summary>
     /// Captures a single frame and saves it to the specified path.
     /// </summary>
-    string CapturePhoto(string outputDirectory);
+    string CapturePhoto(string outputDirectory, string? fileName = null);
     
     /// <summary>
     /// Gets the current frame as raw bytes for display.
@@ -44,4 +49,9 @@ public interface ICameraService : IDisposable
     /// Gets whether the camera is currently running.
     /// </summary>
     bool IsRunning { get; }
+
+    /// <summary>
+    /// Gets whether the camera is initialized and ready.
+    /// </summary>
+    bool IsInitialized { get; }
 }

@@ -1,0 +1,31 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PhotoBooth.Event.ViewModels"
+        xmlns:views="using:PhotoBooth.Event.Views"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
+        x:Class="PhotoBooth.Event.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="PhotoBooth Event"
+        WindowState="Maximized"
+        Background="#1a1a2e">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <!-- ViewModel → View mappings for ContentControl rendering -->
+    <Window.DataTemplates>
+        <DataTemplate DataType="vm:StartViewModel">
+            <views:StartView />
+        </DataTemplate>
+        <!-- ViewLocator (registered in App.DataTemplates) handles all VM→View resolution.
+             StartView DataTemplate above is from E1 and harmless but redundant.
+             Do NOT add explicit DataTemplates for other views — ViewLocator resolves them. -->
+    </Window.DataTemplates>
+
+    <!-- Main content area that shows the current view -->
+    <ContentControl Content="{Binding CurrentView}" />
+
+</Window>

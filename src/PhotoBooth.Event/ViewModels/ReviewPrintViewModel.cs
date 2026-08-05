@@ -22,6 +22,7 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
     private readonly CancellationTokenSource _cts = new();
     private CancellationTokenSource? _idleTimerCts;
     private bool _isPrinting;
+    private bool _disposed;
 
     public int IdleTimeoutMs { get; set; } = 30000; // 30 seconds default
 
@@ -62,6 +63,7 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
     {
         try
         {
+            if (_disposed) return;
             await LoadFinalImageAsync();
             
             await GenerateQROverlayAsync(_cts.Token);
@@ -146,6 +148,14 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
         _idleTimerCts?.Cancel();
         _sessionService.StartNewSession();
         _navigationService.NavigateTo<StartViewModel>();
+
+        // Force GC after session ends to reclaim native memory (OpenCV Mat, Avalonia Bitmap)
+        // that may not be collected promptly by background GC during continuous 12h operation.
+        Task.Run(() =>
+        {
+            GC.Collect(2, GCCollectionMode.Optimized, blocking: false);
+            GC.WaitForPendingFinalizers();
+        });
     }
 
     private async Task LoadFinalImageAsync()
@@ -205,7 +215,7 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task StartPrintingAsync()
     {
-        if (_isPrinting) return;
+        if (_isPrinting || _disposed) return;
         _isPrinting = true;
 
         _idleTimerCts?.Cancel(); // Stop timer during printing
@@ -218,7 +228,7 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
             {
                 var success = await _printService.PrintImageAsync(
                     _sessionService.CurrentSession.FinalImagePath,
-                    "default_printer", 
+                    DeviceConfig.PrinterName, 
                     PrintCopies, 
                     _cts.Token);
                 
@@ -380,11 +390,19 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
+
         _idleTimerCts?.Cancel();
         _idleTimerCts?.Dispose();
+        _idleTimerCts = null;
+
         _cts.Cancel();
-        
+        _cts.Dispose();
+
         FinalImage?.Dispose();
         FinalImage = null;
+
+        GC.SuppressFinalize(this);
     }
 }

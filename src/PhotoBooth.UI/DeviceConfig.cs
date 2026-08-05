@@ -21,6 +21,8 @@ public static class DeviceConfig
 
     public static bool EnablePrinting { get; set; } = false;
     public static string PrinterName { get; set; } = "";
+    public static int CountdownSeconds { get; set; } = 3;
+    public static string EventName { get; set; } = "DONGFEST";
 
     // ====================================================================
     // CẤU HÌNH GOOGLE DRIVE — SỬA Ở ĐÂY
@@ -145,8 +147,19 @@ public static class DeviceConfig
                 if (!string.IsNullOrWhiteSpace(name))
                     PrinterName = name;
             }
+            else if (arg.StartsWith("--countdownSeconds="))
+            {
+                if (int.TryParse(arg.Substring("--countdownSeconds=".Length), out var cs))
+                    CountdownSeconds = cs;
+            }
+            else if (arg.StartsWith("--eventName="))
+            {
+                var name = arg.Substring("--eventName=".Length);
+                if (!string.IsNullOrWhiteSpace(name))
+                    EventName = name;
+            }
         }
         
-        System.Console.WriteLine($"[CONFIG] StoreId={StoreId}, DeviceId={DeviceId}, PlanType={PlanType}, ApiBaseUrl={ApiBaseUrl}, PriceLayout6={PriceLayout6}, PriceLayout2={PriceLayout2}, GoogleDriveEnabled={GoogleDriveEnabled}, GoogleDrivePath={GetMaskedGDrivePath()}, AppsScriptUrl={GetMaskedAppsScriptUrl()}, EnablePrinting={EnablePrinting}, PrinterName={PrinterName}");
+        System.Console.WriteLine($"[CONFIG] StoreId={StoreId}, DeviceId={DeviceId}, PlanType={PlanType}, ApiBaseUrl={ApiBaseUrl}, PriceLayout6={PriceLayout6}, PriceLayout2={PriceLayout2}, GoogleDriveEnabled={GoogleDriveEnabled}, GoogleDrivePath={GetMaskedGDrivePath()}, AppsScriptUrl={GetMaskedAppsScriptUrl()}, EnablePrinting={EnablePrinting}, PrinterName={PrinterName}, CountdownSeconds={CountdownSeconds}, EventName={EventName}");
     }
 }

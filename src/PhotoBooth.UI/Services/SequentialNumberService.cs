@@ -72,7 +72,7 @@ public static class SequentialNumberService
             if (state.Counter == 0)
                 return $"{today}-001"; // Chưa có session nào hôm nay
 
-            return $"{state.DatePrefix}-{state.Counter:D3}";
+            return $"{state.DatePrefix}-{(state.Counter + 1):D3}";
         }
     }
 

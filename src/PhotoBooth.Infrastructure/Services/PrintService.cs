@@ -15,8 +15,7 @@ public class PrintService : IPrintService
         {
             if (string.IsNullOrWhiteSpace(printerName))
             {
-                Console.WriteLine("[ERROR] PrinterName is not configured.");
-                return false;
+                Console.WriteLine("[PRINT] PrinterName is empty, using system default printer.");
             }
 
             if (copies <= 0) copies = 1;
@@ -44,8 +43,11 @@ public class PrintService : IPrintService
 
     private async Task<bool> PrintUnixAsync(string imagePath, string printerName, int copies, CancellationToken ct)
     {
-        // lp -n 3 -d "DNP_DS_RX1HS" "/path/to/image.jpg"
-        var args = $"-n {copies} -d \"{printerName}\" \"{imagePath}\"";
+        // If printerName is empty, omit the -d flag to use default printer
+        // -o fit-to-page ensures the image is scaled to fit the paper (handles rotation automatically)
+        var args = string.IsNullOrWhiteSpace(printerName) 
+            ? $"-n {copies} -o fit-to-page \"{imagePath}\""
+            : $"-n {copies} -d \"{printerName}\" -o fit-to-page \"{imagePath}\"";
         
         var startInfo = new ProcessStartInfo
         {
@@ -69,7 +71,7 @@ public class PrintService : IPrintService
             return false;
         }
 
-        Console.WriteLine($"[PRINT] Successfully sent {copies} copies to {printerName} via lp");
+        Console.WriteLine($"[PRINT] Successfully sent {copies} copies to {(string.IsNullOrWhiteSpace(printerName) ? "default printer" : printerName)} via lp");
         return true;
     }
 

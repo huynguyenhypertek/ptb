@@ -11,6 +11,11 @@ public partial class MainViewModel : ObservableObject
 {
     private readonly ApiService _apiService = new();
     private readonly SettingsService _settingsService = new();
+    private readonly ApiProcessManager? _apiProcessManager;
+
+    // BUG FIX: Singleton — prevent creating a new ViewModel on every tab switch,
+    // which would discard all Process references and show devices as "Đã dừng".
+    private DeviceLauncherViewModel? _deviceLauncherViewModel;
 
     [ObservableProperty]
     private object? _currentView;
@@ -52,8 +57,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private IBrush _subtextColor = new SolidColorBrush(Color.Parse("#888888"));
 
-    public MainViewModel()
+    public MainViewModel(ApiProcessManager? apiProcessManager = null)
     {
+        _apiProcessManager = apiProcessManager;
         CurrentView = new LoginViewModel(_apiService, OnLoginSuccess);
     }
 
@@ -139,7 +145,9 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ShowDeviceLauncher()
     {
-        CurrentView = new DeviceLauncherViewModel(_apiService, _settingsService);
+        // Reuse the same instance so running-process state is not lost on tab navigation.
+        _deviceLauncherViewModel ??= new DeviceLauncherViewModel(_apiService, _settingsService);
+        CurrentView = _deviceLauncherViewModel;
     }
 
     [RelayCommand]

@@ -1,0 +1,158 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoBooth.Event.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
+             x:Class="PhotoBooth.Event.Views.PhotoSelectView"
+             x:DataType="vm:PhotoSelectViewModel"
+             Background="#1a1a2e">
+
+    <UserControl.Styles>
+        <!-- Transparent button style for photo thumbnails -->
+        <Style Selector="Button.PhotoBtn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.PhotoBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid ColumnDefinitions="*, 360" Margin="40">
+
+        <!-- Left side: Photo Grid (4x2) -->
+        <Grid Grid.Column="0" RowDefinitions="Auto, *, Auto">
+
+            <!-- Title -->
+            <TextBlock Grid.Row="0"
+                       Text="Select 4 photos for your print"
+                       FontSize="32" FontWeight="Bold"
+                       Foreground="White"
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,20"/>
+
+            <!-- Photo grid: 4 columns x 2 rows via WrapPanel -->
+            <ItemsControl Grid.Row="1"
+                          ItemsSource="{Binding Photos}"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <!-- MaxWidth=1380: 4 columns × (320px width + 5+5px margin) = 1320, plus 60px buffer -->
+                        <WrapPanel MaxWidth="1380" HorizontalAlignment="Center"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:PhotoItem">
+                        <Button Classes="PhotoBtn"
+                                Command="{Binding $parent[ItemsControl].((vm:PhotoSelectViewModel)DataContext).ToggleSelectionCommand}"
+                                CommandParameter="{Binding}"
+                                Margin="5">
+                            <Grid Width="320" Height="180">
+                                <!-- Photo thumbnail (Background as fallback if image decodes to null) -->
+                                <Border CornerRadius="8" ClipToBounds="True" Background="#2a2a4a">
+                                    <Image Source="{Binding Thumbnail}"
+                                           Stretch="UniformToFill"/>
+                                </Border>
+
+                                <!-- Placeholder when no thumbnail loaded.
+                                     !Thumbnail uses Avalonia truthiness: null→true, non-null→false.
+                                     This is a standard Avalonia pattern for nullable reference bindings. -->
+                                <Border CornerRadius="8"
+                                        Background="#2a2a4a"
+                                        IsVisible="{Binding !Thumbnail}">
+                                    <TextBlock Text="📷"
+                                               FontSize="40"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                </Border>
+
+                                <!-- Selection highlight border -->
+                                <Border CornerRadius="8"
+                                        BorderBrush="#e94560"
+                                        BorderThickness="4"
+                                        IsVisible="{Binding IsSelected}"/>
+
+                                <!-- Checkmark badge -->
+                                <Border Background="#e94560"
+                                        CornerRadius="15"
+                                        Width="30" Height="30"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Top"
+                                        Margin="0,5,5,0"
+                                        IsVisible="{Binding IsSelected}">
+                                    <TextBlock Text="✓"
+                                               Foreground="White"
+                                               FontSize="16" FontWeight="Bold"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                </Border>
+                            </Grid>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Bottom: Selection counter + buttons -->
+            <StackPanel Grid.Row="2"
+                        HorizontalAlignment="Center"
+                        Orientation="Horizontal"
+                        Spacing="30"
+                        Margin="0,20,0,0">
+
+                <Button Content="BACK"
+                        Command="{Binding GoBackCommand}"
+                        FontSize="32" FontWeight="Bold"
+                        Padding="60,30"
+                        Background="#333355"
+                        Foreground="White"/>
+
+                <!-- Selection counter -->
+                <TextBlock VerticalAlignment="Center"
+                           FontSize="32"
+                           Foreground="White">
+                    <Run Text="{Binding SelectedCount}"/>
+                    <Run Text=" / 4 selected"/>
+                </TextBlock>
+
+                <Button Content="CONFIRM"
+                        Command="{Binding ConfirmCommand}"
+                        FontSize="32" FontWeight="Bold"
+                        Padding="60,30"
+                        Background="#e94560"
+                        Foreground="White"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Right side: 4 Preview slots -->
+        <StackPanel Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Spacing="15"
+                    Margin="20,0,0,0">
+
+            <TextBlock Text="Preview"
+                       FontSize="24" FontWeight="Bold"
+                       Foreground="White"
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,10"/>
+
+            <Border CornerRadius="8" Background="#2a2a4a" Height="180" ClipToBounds="True">
+                <Image Source="{Binding SelectedPhoto1}" Stretch="UniformToFill"/>
+            </Border>
+            <Border CornerRadius="8" Background="#2a2a4a" Height="180" ClipToBounds="True">
+                <Image Source="{Binding SelectedPhoto2}" Stretch="UniformToFill"/>
+            </Border>
+            <Border CornerRadius="8" Background="#2a2a4a" Height="180" ClipToBounds="True">
+                <Image Source="{Binding SelectedPhoto3}" Stretch="UniformToFill"/>
+            </Border>
+            <Border CornerRadius="8" Background="#2a2a4a" Height="180" ClipToBounds="True">
+                <Image Source="{Binding SelectedPhoto4}" Stretch="UniformToFill"/>
+            </Border>
+        </StackPanel>
+
+    </Grid>
+
+</UserControl>

@@ -50,9 +50,31 @@ public static class ImageCompositeService
             using var photo = Cv2.ImRead(photoPath, ImreadModes.Color);
             if (photo.Empty()) continue;
 
-            // Resize photo to fit the position
+            // Center-crop photo to match the target aspect ratio before resizing
+            // This prevents the image from being squished (UniformToFill behavior)
+            double targetAspect = (double)pos.w / pos.h;
+            double photoAspect = (double)photo.Width / photo.Height;
+
+            int cropX = 0, cropY = 0, cropW = photo.Width, cropH = photo.Height;
+
+            if (photoAspect > targetAspect)
+            {
+                // Photo is wider than target -> crop sides
+                cropW = (int)(photo.Height * targetAspect);
+                cropX = (photo.Width - cropW) / 2;
+            }
+            else if (photoAspect < targetAspect)
+            {
+                // Photo is taller than target -> crop top/bottom
+                cropH = (int)(photo.Width / targetAspect);
+                cropY = (photo.Height - cropH) / 2;
+            }
+
+            using var cropped = new Mat(photo, new Rect(cropX, cropY, cropW, cropH));
+
+            // Resize the cropped photo to exactly fit the position
             using var resized = new Mat();
-            Cv2.Resize(photo, resized, new Size(pos.w, pos.h));
+            Cv2.Resize(cropped, resized, new Size(pos.w, pos.h));
 
             // Convert photo to BGRA
             using var photoBGRA = new Mat();
@@ -123,11 +145,11 @@ public static class ImageCompositeService
     /// </summary>
     /// <param name="imagePath">Đường dẫn ảnh cuối (sẽ ghi đè file)</param>
     /// <param name="sequentialNumber">Mã số (ví dụ: "0516-001")</param>
-    /// <returns>Path to backup of original image (without overlay), or null if no backup was created</returns>
-    public static string? OverlaySequentialNumber(string imagePath, string sequentialNumber)
+    /// <returns>True if overlay was successfully applied, false otherwise</returns>
+    public static bool OverlaySequentialNumber(string imagePath, string sequentialNumber)
     {
         if (string.IsNullOrEmpty(imagePath) || string.IsNullOrEmpty(sequentialNumber) || !File.Exists(imagePath))
-            return null;
+            return false;
 
         // F4: Path.GetDirectoryName returns "" (not null) for relative paths like "photo.png"
         var dir = Path.GetDirectoryName(imagePath);
@@ -140,14 +162,14 @@ public static class ImageCompositeService
         if (image.Empty())
         {
             Console.WriteLine($"[COMPOSITE] WARNING: Could not read image for overlay: {imagePath}");
-            return null;
+            return false;
         }
 
         // Q2: Skip overlay on tiny images (text wouldn't be readable anyway)
         if (image.Width < 100 || image.Height < 100)
         {
             Console.WriteLine($"[COMPOSITE] Image too small for overlay ({image.Width}x{image.Height}), skipping");
-            return null;
+            return false;
         }
 
         // A1/P1: Save backup of original image ONLY when we will actually modify it
@@ -215,8 +237,9 @@ public static class ImageCompositeService
             throw new IOException($"Failed to write overlay image to {imagePath}");
         }
 
-        Console.WriteLine($"[COMPOSITE] Sequential number '{sequentialNumber}' overlaid on image (backup: {Path.GetFileName(backupPath)})");
-        return backupPath;
+        Console.WriteLine($"[COMPOSITE] Sequential number '{sequentialNumber}' overlaid on image");
+        try { File.Delete(backupPath); } catch { }
+        return true;
     }
 
     private static void OverlayAlphaInternal(Mat canvas, Mat overlay)
@@ -260,5 +283,116 @@ public static class ImageCompositeService
             foreach (var ch in overlayChannels) ch.Dispose();
             foreach (var ch in canvasChannels) ch.Dispose();
         }
+    }
+
+    /// <summary>
+    /// Overlay QR code onto the final composite image.
+    /// Scaled proportionally to 10-15% of the target image's height.
+    /// Placed in the bottom-left corner with 20px margin.
+    /// Saves original image as backup before modifying.
+    /// </summary>
+    /// <param name="imagePath">Path to the target image (will be overwritten)</param>
+    /// <param name="qrBytes">QR code image bytes (PNG format from QRCoder)</param>
+    /// <returns>True if overlay was successfully applied, false otherwise</returns>
+    public static bool OverlayQrCode(string imagePath, byte[] qrBytes)
+    {
+        if (string.IsNullOrEmpty(imagePath) || qrBytes == null || qrBytes.Length == 0 || !File.Exists(imagePath))
+            return false;
+
+        var dir = Path.GetDirectoryName(imagePath);
+        if (string.IsNullOrEmpty(dir)) dir = ".";
+        var ext = Path.GetExtension(imagePath);
+        var nameWithoutExt = Path.GetFileNameWithoutExtension(imagePath);
+        var backupPath = Path.Combine(dir, $"{nameWithoutExt}_original{ext}");
+
+        using var image = Cv2.ImRead(imagePath, ImreadModes.Unchanged);
+        if (image.Empty())
+        {
+            Console.WriteLine($"[COMPOSITE] WARNING: Could not read image for QR overlay: {imagePath}");
+            return false;
+        }
+
+        if (image.Width < 100 || image.Height < 100)
+        {
+            Console.WriteLine($"[COMPOSITE] Image too small for QR overlay ({image.Width}x{image.Height}), skipping");
+            return false;
+        }
+
+        File.Copy(imagePath, backupPath, overwrite: true);
+
+        // Decode QR bytes directly into OpenCV Mat
+        using var qrImage = Mat.FromImageData(qrBytes, ImreadModes.Unchanged);
+        if (qrImage.Empty())
+        {
+            Console.WriteLine("[COMPOSITE] WARNING: Failed to decode QR code bytes");
+            try { File.Delete(backupPath); } catch { }
+            return false;
+        }
+
+        // Calculate scaling (10-15% of image height) -> let's use 12%
+        int targetQrSize = (int)(image.Height * 0.12);
+        
+        // Ensure QR size is reasonable, at least 100px for reliable scanning
+        targetQrSize = Math.Max(100, targetQrSize);
+
+        using var resizedQr = new Mat();
+        Cv2.Resize(qrImage, resizedQr, new Size(targetQrSize, targetQrSize), 0, 0, InterpolationFlags.Nearest);
+
+        // Convert QR to match image channels if necessary
+        using var convertedQr = new Mat();
+        if (image.Channels() == 4 && resizedQr.Channels() != 4)
+        {
+            if (resizedQr.Channels() == 1)
+                Cv2.CvtColor(resizedQr, convertedQr, ColorConversionCodes.GRAY2BGRA);
+            else if (resizedQr.Channels() == 3)
+                Cv2.CvtColor(resizedQr, convertedQr, ColorConversionCodes.BGR2BGRA);
+        }
+        else if (image.Channels() == 3 && resizedQr.Channels() != 3)
+        {
+             if (resizedQr.Channels() == 1)
+                Cv2.CvtColor(resizedQr, convertedQr, ColorConversionCodes.GRAY2BGR);
+             else if (resizedQr.Channels() == 4)
+                Cv2.CvtColor(resizedQr, convertedQr, ColorConversionCodes.BGRA2BGR);
+        }
+        else
+        {
+            resizedQr.CopyTo(convertedQr);
+        }
+
+        // Position: bottom-left corner, 20px margin
+        int margin = 20;
+        int x = margin;
+        int y = image.Height - targetQrSize - margin;
+
+        // Clamp just in case
+        x = Math.Max(0, x);
+        y = Math.Max(0, y);
+
+        // Calculate ROI width/height taking image bounds into account
+        int roiW = Math.Min(targetQrSize, image.Width - x);
+        int roiH = Math.Min(targetQrSize, image.Height - y);
+
+        if (roiW > 0 && roiH > 0)
+        {
+            var roi = new Rect(x, y, roiW, roiH);
+            var qrRoi = new Rect(0, 0, roiW, roiH);
+
+            // Directly copy the QR code onto the image (opaque overwrite)
+            // This preserves the solid white background of the QR code
+            convertedQr[qrRoi].CopyTo(image[roi]);
+        }
+
+        var writeResult = Cv2.ImWrite(imagePath, image);
+        if (!writeResult)
+        {
+            Console.WriteLine($"[COMPOSITE] ERROR: Failed to write QR overlay image to {imagePath}");
+            try { File.Copy(backupPath, imagePath, overwrite: true); }
+            catch (Exception restoreEx) { Console.WriteLine($"[COMPOSITE] ERROR: Backup restore also failed: {restoreEx.Message}"); }
+            throw new IOException($"Failed to write QR overlay image to {imagePath}");
+        }
+
+        Console.WriteLine($"[COMPOSITE] QR code overlaid on image");
+        try { File.Delete(backupPath); } catch { }
+        return true;
     }
 }

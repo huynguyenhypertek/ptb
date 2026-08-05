@@ -141,6 +141,7 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
             bool isInitialized = await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 if (_disposed) return false;
+                if (_cameraService.IsInitialized) return true;
                 bool success = _cameraService.Initialize(0);
                 if (!success) success = _cameraService.Initialize(1);
                 return success;
@@ -325,10 +326,10 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
             
             if (_disposed) return;
             
-            // Stop trước khi thử lại (safe even if already stopped — StopPreview is idempotent)
+            // Stop trước khi thử lại (safe even if already stopped — Deinitialize is idempotent)
             try
             {
-                _cameraService.StopPreview();
+                _cameraService.Deinitialize();
             }
             catch (ObjectDisposedException)
             {
@@ -348,7 +349,7 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
     }
 
     [ObservableProperty]
-    private int _countdownDuration = 1; // 5 seconds countdown
+    private int _countdownDuration = DeviceConfig.CountdownSeconds;
 
     // Task 3.6: Shooting sequence with cancellation support
     [RelayCommand]
@@ -446,8 +447,9 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
                 StatusMessage = "Hoàn thành! Đang chuyển...";
                 await Task.Delay(1000, _shootingCts?.Token ?? CancellationToken.None);
                 
-                // Stop camera before navigating
-                _cameraService.StopPreview();
+                // Stop camera on background thread
+                await Task.Run(() => _cameraService.Deinitialize());
+                
                 NavigationService.NavigateTo<PhotoSelectionViewModel>();
             }
         }
@@ -459,9 +461,9 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private void Skip()
+    private async Task Skip()
     {
-        _cameraService.StopPreview();
+        await Task.Run(() => _cameraService.Deinitialize());
         NavigationService.NavigateTo<PhotoSelectionViewModel>();
     }
 
@@ -482,7 +484,7 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
         // 3. Stop preview FIRST — this stops OnFrameReady from firing
         try
         {
-            _cameraService.StopPreview();
+            _cameraService.Deinitialize();
         }
         catch (ObjectDisposedException) { }
         

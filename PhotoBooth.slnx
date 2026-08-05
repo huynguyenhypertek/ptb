@@ -1,10 +1,14 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/PhotoBooth.Admin/PhotoBooth.Admin.csproj" />
+    <Project Path="src/PhotoBooth.API/PhotoBooth.API.csproj" />
     <Project Path="src/PhotoBooth.Core/PhotoBooth.Core.csproj" />
+    <Project Path="src/PhotoBooth.Event/PhotoBooth.Event.csproj" />
     <Project Path="src/PhotoBooth.Infrastructure/PhotoBooth.Infrastructure.csproj" />
     <Project Path="src/PhotoBooth.UI/PhotoBooth.UI.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/PhotoBooth.Admin.Tests/PhotoBooth.Admin.Tests.csproj" />
     <Project Path="tests/PhotoBooth.Tests/PhotoBooth.Tests.csproj" />
   </Folder>
 </Solution>

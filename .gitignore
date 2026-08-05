@@ -28,4 +28,11 @@ Thumbs.db
 
 # Build
 publish/
+_publish/
 out/
+
+# macOS app bundles (build output)
+*.app/
+
+# Node
+node_modules/

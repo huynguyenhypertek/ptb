@@ -14,9 +14,11 @@
                     <TextBlock Text="Chọn thiết bị để khởi động phần mềm PhotoBooth" 
                                FontSize="13" Foreground="#888" Margin="0,4,0,0"/>
                 </StackPanel>
-                <Button Grid.Column="1" Content="🔄 Tải lại" Command="{Binding LoadDevicesCommand}"
-                        Background="#7c3aed" Foreground="White" Padding="16,10" CornerRadius="8"
-                        VerticalAlignment="Center" FontWeight="Bold"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="15" VerticalAlignment="Center">
+                    <Button Content="🔄 Tải lại" Command="{Binding LoadDevicesCommand}"
+                            Background="#7c3aed" Foreground="White" Padding="16,10" CornerRadius="8"
+                            VerticalAlignment="Center" FontWeight="Bold"/>
+                </StackPanel>
             </Grid>
         </Border>
 
