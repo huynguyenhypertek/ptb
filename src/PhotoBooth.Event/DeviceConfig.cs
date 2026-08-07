@@ -21,6 +21,7 @@ public static class DeviceConfig
 
     public static bool EnablePrinting { get; set; } = false;
     public static string PrinterName { get; set; } = "";
+    public static string PrintMedia { get; set; } = ""; // Khổ giấy, VD: "300dnp6x4" cho DNP 10x15cm
     public static int CountdownSeconds { get; set; } = 3;
     public static string EventName { get; set; } = "DONGFEST";
     public static int QrCodeSizePercent { get; set; } = 10; // % of image height (1-30)
@@ -121,6 +122,12 @@ public static class DeviceConfig
                 if (!string.IsNullOrWhiteSpace(name))
                     PrinterName = name;
             }
+            else if (arg.StartsWith("--printMedia="))
+            {
+                var media = arg.Substring("--printMedia=".Length);
+                if (!string.IsNullOrWhiteSpace(media))
+                    PrintMedia = media;
+            }
             else if (arg.StartsWith("--countdownSeconds="))
             {
                 if (int.TryParse(arg.Substring("--countdownSeconds=".Length), out var cs))
@@ -147,6 +154,6 @@ public static class DeviceConfig
             $"[CONFIG] StoreId={StoreId}, DeviceId={DeviceId}, PlanType={PlanType}, " +
             $"ApiBaseUrl={ApiBaseUrl}, GoogleDriveEnabled={GoogleDriveEnabled}, " +
             $"GoogleDrivePath={GetMaskedGDrivePath()}, AppsScriptUrl={GetMaskedAppsScriptUrl()}, " +
-            $"EnablePrinting={EnablePrinting}, PrinterName={PrinterName}, CountdownSeconds={CountdownSeconds}, EventName={EventName}, QrCodeSizePercent={QrCodeSizePercent}");
+            $"EnablePrinting={EnablePrinting}, PrinterName={PrinterName}, PrintMedia={PrintMedia}, CountdownSeconds={CountdownSeconds}, EventName={EventName}, QrCodeSizePercent={QrCodeSizePercent}");
     }
 }

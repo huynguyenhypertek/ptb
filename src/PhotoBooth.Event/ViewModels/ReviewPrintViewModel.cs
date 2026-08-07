@@ -230,7 +230,8 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
                     _sessionService.CurrentSession.FinalImagePath,
                     DeviceConfig.PrinterName, 
                     PrintCopies, 
-                    _cts.Token);
+                    _cts.Token,
+                    DeviceConfig.PrintMedia);
                 
                 if (success)
                 {

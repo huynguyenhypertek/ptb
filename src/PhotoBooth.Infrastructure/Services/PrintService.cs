@@ -9,7 +9,7 @@ namespace PhotoBooth.Infrastructure.Services;
 
 public class PrintService : IPrintService
 {
-    public async Task<bool> PrintImageAsync(string imagePath, string printerName, int copies, CancellationToken ct)
+    public async Task<bool> PrintImageAsync(string imagePath, string printerName, int copies, CancellationToken ct, string mediaType = "")
     {
         try
         {
@@ -22,7 +22,7 @@ public class PrintService : IPrintService
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) || RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                return await PrintUnixAsync(imagePath, printerName, copies, ct);
+                return await PrintUnixAsync(imagePath, printerName, copies, ct, mediaType);
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -41,13 +41,18 @@ public class PrintService : IPrintService
         }
     }
 
-    private async Task<bool> PrintUnixAsync(string imagePath, string printerName, int copies, CancellationToken ct)
+    private async Task<bool> PrintUnixAsync(string imagePath, string printerName, int copies, CancellationToken ct, string mediaType = "")
     {
-        // If printerName is empty, omit the -d flag to use default printer
-        // -o fit-to-page ensures the image is scaled to fit the paper (handles rotation automatically)
+        // Build lp options
+        var options = "-o fit-to-page";
+        
+        // Add media type if specified (e.g. "300dnp6x4" for DNP 10x15cm)
+        if (!string.IsNullOrWhiteSpace(mediaType))
+            options += $" -o media={mediaType}";
+
         var args = string.IsNullOrWhiteSpace(printerName) 
-            ? $"-n {copies} -o fit-to-page \"{imagePath}\""
-            : $"-n {copies} -d \"{printerName}\" -o fit-to-page \"{imagePath}\"";
+            ? $"-n {copies} {options} \"{imagePath}\""
+            : $"-n {copies} -d \"{printerName}\" {options} \"{imagePath}\"";
         
         var startInfo = new ProcessStartInfo
         {
