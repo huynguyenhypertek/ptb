@@ -124,7 +124,7 @@ API sẽ chạy tại `http://localhost:5148`. Lần đầu chạy, hệ thống
 | `adminCH1` | StoreAdmin | Quản lý Cửa hàng 1 |
 | `Pb1_Ch1` | Device | Máy chụp 1, Cửa hàng 1 |
 
-> Mật khẩu mặc định cho tất cả tài khoản: xem trong source code (`Program.cs`).
+> 🔑 **Mật khẩu mặc định cho tất cả tài khoản:** `admin123`
 
 ### 4. Chạy Admin App
 
@@ -162,6 +162,111 @@ dotnet run --project src/PhotoBooth.UI -- \
 | `--printerName` | Tên máy in (Bỏ trống để in bằng máy mặc định) | `""` |
 | `--countdownSeconds` | Thời gian đếm ngược trước mỗi lần nháy máy (giây) | `3` |
 | `--eventName` | Tên sự kiện (Dùng làm tiền tố cho tên file ảnh) | `DONGFEST` |
+
+### 6. Chạy PhotoBooth Event (trực tiếp)
+
+```bash
+dotnet run --project src/PhotoBooth.Event -- \
+  --deviceId=Pb1_Ch1 \
+  --storeId=1 \
+  --apiBaseUrl=http://localhost:5148 \
+  --enablePrinting=true \
+  --countdownSeconds=3 \
+  --eventName=DONGFEST
+```
+
+#### Tham số Event
+
+| Tham số | Mô tả | Mặc định |
+|---------|--------|----------|
+| `--deviceId` | ID thiết bị (username) | `device-1` |
+| `--storeId` | ID cửa hàng | `null` |
+| `--apiBaseUrl` | URL API server | `http://localhost:5148` |
+| `--enablePrinting` | Bật tính năng in ảnh | `false` |
+| `--printerName` | Tên máy in (Bỏ trống = máy in mặc định) | `""` |
+| `--countdownSeconds` | Đếm ngược trước mỗi ảnh (giây) | `3` |
+| `--eventName` | Tên sự kiện (tiền tố file ảnh) | `DONGFEST` |
+| `--qrCodeSizePercent` | Kích thước QR code (% chiều cao ảnh, 1-30) | `10` |
+| `--googleDriveEnabled` | Bật Google Drive sync | `true` |
+| `--googleDrivePath` | Đường dẫn folder Google Drive | `""` |
+| `--appsScriptUrl` | URL Google Apps Script | `""` |
+
+---
+
+## 🖨️ Kiểm tra chức năng In ảnh
+
+macOS sử dụng hệ thống **CUPS** để quản lý in. Các lệnh hữu ích:
+
+```bash
+# Xem danh sách máy in đang kết nối
+lpstat -p
+
+# Xem hàng đợi in (print queue)
+lpstat -o
+
+# Test in thử 1 file ảnh
+lp -d <TenMayIn> /path/to/image.jpg
+
+# Xem lịch sử jobs đã hoàn thành
+lpstat -W completed | tail -10
+```
+
+**Giao diện web CUPS:** Mở trình duyệt tại `http://localhost:631`
+- Xem trạng thái máy in
+- Xem/hủy print jobs
+- Kiểm tra lỗi in
+
+> 💡 **Tip:** Nếu `lpstat -o` có jobs ở trạng thái "pending" → máy in chưa kết nối. Khi kết nối sẽ tự động in.
+
+---
+
+## 📦 Triển khai sang máy mới
+
+### Bước 1: Cài đặt .NET SDK
+
+```bash
+# macOS (qua Homebrew)
+brew install dotnet
+
+# Hoặc tải từ: https://dotnet.microsoft.com/download/dotnet/10.0
+```
+
+### Bước 2: Copy project
+
+```bash
+# Copy toàn bộ thư mục project sang máy mới
+# Hoặc clone từ Git
+git clone <repository-url>
+cd ptb
+```
+
+### Bước 3: Cấu hình JWT Secret
+
+```bash
+cd src/PhotoBooth.API
+dotnet user-secrets set "Jwt:Key" "your-secret-key-must-be-at-least-32-characters-long"
+cd ../..
+```
+
+### Bước 4: Chạy hệ thống
+
+```bash
+# Terminal 1: Chạy API (tự tạo DB + tài khoản mặc định)
+dotnet run --project src/PhotoBooth.API
+
+# Terminal 2: Chạy Admin (sẽ tự khởi động Event app)
+dotnet run --project src/PhotoBooth.Admin
+```
+
+### Bước 5: Đăng nhập Admin
+
+| Tài khoản | Mật khẩu | Vai trò |
+|-----------|----------|--------|
+| `admin` | `admin123` | SystemAdmin |
+| `adminCH1` | `admin123` | StoreAdmin |
+| `Pb1_Ch1` | `admin123` | Device |
+
+> ⚠️ **Lưu ý:** Database SQLite tự động tạo khi chạy API lần đầu, **không cần cài database riêng**.
 
 ---
 
