@@ -76,7 +76,7 @@ public partial class MainViewModel : ObservableObject
         CurrentRole = _apiService.Role ?? "";
         CurrentStore = _apiService.StoreName ?? "Tất cả";
         IsSystemAdmin = _apiService.Role == "SystemAdmin";
-        CurrentView = new DashboardViewModel(_apiService, _settingsService);
+        CurrentView = new DashboardViewModel(_apiService, GetOrCreateDeviceLauncher());
     }
 
     [RelayCommand]
@@ -109,7 +109,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ShowDashboard()
     {
-        CurrentView = new DashboardViewModel(_apiService, _settingsService);
+        CurrentView = new DashboardViewModel(_apiService, GetOrCreateDeviceLauncher());
     }
 
     [RelayCommand]
@@ -142,12 +142,16 @@ public partial class MainViewModel : ObservableObject
         CurrentView = new PlanListViewModel(_apiService);
     }
 
+    private DeviceLauncherViewModel GetOrCreateDeviceLauncher()
+    {
+        _deviceLauncherViewModel ??= new DeviceLauncherViewModel(_apiService, _settingsService);
+        return _deviceLauncherViewModel;
+    }
+
     [RelayCommand]
     private void ShowDeviceLauncher()
     {
-        // Reuse the same instance so running-process state is not lost on tab navigation.
-        _deviceLauncherViewModel ??= new DeviceLauncherViewModel(_apiService, _settingsService);
-        CurrentView = _deviceLauncherViewModel;
+        CurrentView = GetOrCreateDeviceLauncher();
     }
 
     [RelayCommand]
