@@ -9,6 +9,11 @@
         <local:ViewLocator/>
     </Application.DataTemplates>
   
+    <Application.Resources>
+        <!-- Custom font: use FontFamily="{StaticResource UTMCookies}" in XAML -->
+        <FontFamily x:Key="UTMCookies">avares://PhotoBooth.Event/Assets/DongFest/font/UTM Cookies.ttf#UTM Cookies</FontFamily>
+    </Application.Resources>
+
     <Application.Styles>
         <FluentTheme />
     </Application.Styles>

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -39,6 +40,18 @@ public partial class PhotoSelectViewModel : ViewModelBase, IDisposable
     /// Thumbnail at 300px wide = ~0.5MB — 16x smaller.
     /// </summary>
     private const int ThumbnailWidth = 300;
+
+    /// <summary>
+    /// Photo grid cell size — to resize all cells proportionally:
+    ///   1. Change PhotoScale
+    ///   2. Update PhotoWidth = (int)(195 * PhotoScale)
+    ///   3. Update PhotoHeight = (int)(283 * PhotoScale)
+    ///   4. Update Width/Height in PhotoSelectView.axaml dòng 74
+    /// Base size at scale 1.0: 195×283 (matches back3.png white slot dimensions).
+    /// Current scale: 1.10 → 215×311
+    /// </summary>
+    public const int PhotoWidth = 215;   // = (int)(195 * 1.10)
+    public const int PhotoHeight = 311;  // = (int)(283 * 1.10)
 
     // Selected photo previews for the frame (4 slots only, NOT 6)
     [ObservableProperty]
@@ -115,7 +128,6 @@ public partial class PhotoSelectViewModel : ViewModelBase, IDisposable
                 using var memStream = new MemoryStream();
                 fileStream.CopyTo(memStream);
                 memStream.Position = 0;
-                // Decode at thumbnail size instead of full resolution
                 return Bitmap.DecodeToWidth(memStream, ThumbnailWidth);
             }
         }
@@ -200,19 +212,19 @@ public partial class PhotoSelectViewModel : ViewModelBase, IDisposable
 
                 // 1. Extract Asset (File IO)
                 tempFramePath = Path.Combine(Path.GetTempPath(), $"photobooth_frame_{Guid.NewGuid():N}.png");
-                using (var stream = Avalonia.Platform.AssetLoader.Open(new Uri("avares://PhotoBooth.Event/Assets/finish/nen6_1.png")))
+                using (var stream = Avalonia.Platform.AssetLoader.Open(new Uri("avares://PhotoBooth.Event/Assets/DongFest/frame/dongfest_frame.png")))
                 using (var fileStream = File.Create(tempFramePath))
                 {
                     stream.CopyTo(fileStream);
                 }
 
-                // 2. Define 4-Photo Positions (top 4 slots of layout6)
+                // 2. Define 4-Photo Positions (pixel-exact transparent slots in dongfest_frame.png 3545x5316)
                 var positions = new (int, int, int, int)[]
                 {
-                    (73, 50, 247, 269),    // Photo 1: top-left
-                    (343, 50, 247, 269),   // Photo 2: top-right
-                    (74, 326, 247, 269),   // Photo 3: middle-left
-                    (344, 326, 247, 269)   // Photo 4: middle-right
+                    (184, 183, 1500, 2169),    // Photo 1: top-left
+                    (1866, 183, 1500, 2169),   // Photo 2: top-right
+                    (184, 2518, 1500, 2169),   // Photo 3: bottom-left
+                    (1866, 2518, 1500, 2169)   // Photo 4: bottom-right
                 };
 
                 // 3. Composite (CPU-bound OpenCV)
@@ -227,7 +239,41 @@ public partial class PhotoSelectViewModel : ViewModelBase, IDisposable
             });
 
             _sessionService.SetFinalImage(outputPath);
-            // Navigate forward — compositing is handled by E3-S3, NOT here
+
+            // Report session to API (fire-and-forget, like PhotoBooth.UI)
+            var capturedDeviceId = DeviceConfig.DeviceId;
+            var capturedStoreId = DeviceConfig.StoreId;
+            var capturedApiBaseUrl = DeviceConfig.ApiBaseUrl;
+            var capturedPhotoCount = selectedPhotoPaths.Length;
+            var capturedTotalCaptured = _sessionService.CurrentSession.CapturedPhotoPaths.Count;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var apiData = new
+                    {
+                        DeviceId = capturedDeviceId,
+                        StoreId = capturedStoreId,
+                        LayoutUsed = "event-4photo",
+                        FrameUsed = "dongfest_frame",
+                        PhotoCount = capturedPhotoCount,
+                        TotalCaptured = capturedTotalCaptured,
+                        Amount = 0m  // Event mode = free
+                    };
+                    var json = System.Text.Json.JsonSerializer.Serialize(apiData);
+                    using var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                    using var httpClient = new System.Net.Http.HttpClient();
+                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    using var response = await httpClient.PostAsync($"{capturedApiBaseUrl}/api/sessions", content, timeoutCts.Token);
+                    Console.WriteLine($"[API] Session sent: {response.StatusCode}");
+                }
+                catch (Exception apiEx)
+                {
+                    Console.WriteLine($"[API] Warning: Could not send session - {apiEx.Message}");
+                }
+            });
+
             _navigationService.NavigateTo<ReviewPrintViewModel>();
         }
         catch (Exception ex)
@@ -290,9 +336,7 @@ public partial class PhotoItem : ObservableObject
 {
     public int Index { get; set; }
     public string Path { get; set; } = string.Empty;
-
-    [ObservableProperty]
-    private Bitmap? _thumbnail;
+    public Bitmap? Thumbnail { get; set; }
 
     [ObservableProperty]
     private bool _isSelected;

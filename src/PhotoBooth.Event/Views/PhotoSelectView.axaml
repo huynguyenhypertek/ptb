@@ -5,11 +5,10 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
              x:Class="PhotoBooth.Event.Views.PhotoSelectView"
-             x:DataType="vm:PhotoSelectViewModel"
-             Background="#1a1a2e">
+             x:DataType="vm:PhotoSelectViewModel">
 
     <UserControl.Styles>
-        <!-- Transparent button style for photo thumbnails -->
+        <!-- Photo Thumbnail Button Style — transparent, no FluentTheme hover effects -->
         <Style Selector="Button.PhotoBtn">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -19,140 +18,171 @@
         <Style Selector="Button.PhotoBtn:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
         </Style>
+
+        <!-- Overlay Button Style — invisible button placed over background-drawn buttons.
+             Custom template to remove all FluentTheme chrome. -->
+        <Style Selector="Button.OverlayBtn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Background="Transparent"
+                                      CornerRadius="15"/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Button.OverlayBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.OverlayBtn:pressed /template/ ContentPresenter">
+            <!-- Subtle darkening on press for tactile feedback -->
+            <Setter Property="Background" Value="#20000000"/>
+        </Style>
     </UserControl.Styles>
 
-    <Grid ColumnDefinitions="*, 360" Margin="40">
+    <Grid>
+        <!-- Content Scaler — everything inside (including background) scales together -->
+        <Viewbox Stretch="Uniform">
+            <Grid Width="1920" Height="1080">
+                
+                <!-- Background Image (Now scales synchronously with the UI content) -->
+                <Image Source="avares://PhotoBooth.Event/Assets/DongFest/back/back3.png"
+                       Stretch="UniformToFill"/>
 
-        <!-- Left side: Photo Grid (4x2) -->
-        <Grid Grid.Column="0" RowDefinitions="Auto, *, Auto">
+                <!-- ==================== PHOTO GRID ==================== -->
+                <!-- 8 thumbnails positioned over the 8 white slots in back3.png.
+                     Grid origin: x=160, y=230. Cell: ~215x303. Gaps: 19px H, 30px V.
+                     WrapPanel MaxWidth = (215+19)*4 = 936 → exactly 4 items per row. -->
+                <ItemsControl ItemsSource="{Binding Photos}"
+                              HorizontalAlignment="Left"
+                              VerticalAlignment="Top"
+                              Margin="171,240,0,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="4"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Classes="PhotoBtn"
+                                    Command="{Binding $parent[ItemsControl].((vm:PhotoSelectViewModel)DataContext).ToggleSelectionCommand}"
+                                    CommandParameter="{Binding}"
+                                    Margin="0,0,30.5,39.5">
+                                <!-- BẠN CHỈ CẦN CHỈNH SỐ WIDTH Ở DÒNG DƯỚI ĐÂY (CHIỀU CAO SẼ TỰ ĐỘNG NHÂN THEO TỶ LỆ) -->
+                                <Viewbox Width="193" Stretch="Uniform">
+                                    <!-- Tỷ lệ gốc của khung ảnh (không cần sửa dòng này) -->
+                                    <Grid Width="195" Height="283">
+                                    <!-- Photo thumbnail — Background is the fallback when image not loaded -->
+                                    <Border CornerRadius="4" ClipToBounds="True" Background="#2a2a4a">
+                                        <Image Source="{Binding Thumbnail}"
+                                               Stretch="UniformToFill"/>
+                                    </Border>
 
-            <!-- Title -->
-            <TextBlock Grid.Row="0"
-                       Text="Select 4 photos for your print"
-                       FontSize="32" FontWeight="Bold"
-                       Foreground="White"
-                       HorizontalAlignment="Center"
-                       Margin="0,0,0,20"/>
+                                    <!-- Selection highlight border -->
+                                    <Border CornerRadius="4"
+                                            BorderBrush="#e94560"
+                                            BorderThickness="4"
+                                            IsVisible="{Binding IsSelected}"/>
 
-            <!-- Photo grid: 4 columns x 2 rows via WrapPanel -->
-            <ItemsControl Grid.Row="1"
-                          ItemsSource="{Binding Photos}"
-                          HorizontalAlignment="Center"
-                          VerticalAlignment="Center">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <!-- MaxWidth=1380: 4 columns × (320px width + 5+5px margin) = 1320, plus 60px buffer -->
-                        <WrapPanel MaxWidth="1380" HorizontalAlignment="Center"/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:PhotoItem">
-                        <Button Classes="PhotoBtn"
-                                Command="{Binding $parent[ItemsControl].((vm:PhotoSelectViewModel)DataContext).ToggleSelectionCommand}"
-                                CommandParameter="{Binding}"
-                                Margin="5">
-                            <Grid Width="320" Height="180">
-                                <!-- Photo thumbnail (Background as fallback if image decodes to null) -->
-                                <Border CornerRadius="8" ClipToBounds="True" Background="#2a2a4a">
-                                    <Image Source="{Binding Thumbnail}"
-                                           Stretch="UniformToFill"/>
-                                </Border>
+                                    <!-- Checkmark badge -->
+                                    <Border Background="#e94560"
+                                            CornerRadius="15"
+                                            Width="30" Height="30"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Top"
+                                            Margin="0,5,5,0"
+                                            IsVisible="{Binding IsSelected}">
+                                        <TextBlock Text="✓"
+                                                   Foreground="White"
+                                                   FontSize="16" FontWeight="Bold"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </Grid>
+                                </Viewbox>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
-                                <!-- Placeholder when no thumbnail loaded.
-                                     !Thumbnail uses Avalonia truthiness: null→true, non-null→false.
-                                     This is a standard Avalonia pattern for nullable reference bindings. -->
-                                <Border CornerRadius="8"
-                                        Background="#2a2a4a"
-                                        IsVisible="{Binding !Thumbnail}">
-                                    <TextBlock Text="📷"
-                                               FontSize="40"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"/>
-                                </Border>
+                <!-- ==================== FRAME PREVIEW (right side) ==================== -->
+                <!-- dongfest_frame.png is 3545x5316 (portrait ~2:3). Scaled via Viewbox.
+                     Transparent slots detected at pixel-exact positions, scaled ÷10 for Viewbox. -->
+                <Viewbox HorizontalAlignment="Right"
+                         VerticalAlignment="Center"
+                         Margin="0,0,60,30"
+                         Width="580"
+                         Stretch="Uniform">
+                    <Grid Width="355" Height="532">
+                        <!-- Selected Photos Layer (behind frame overlay) -->
+                        <Image Source="{Binding SelectedPhoto1}"
+                               Stretch="UniformToFill"
+                               Width="150" Height="217"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Top"
+                               Margin="18,18,0,0"/>
+                        <Image Source="{Binding SelectedPhoto2}"
+                               Stretch="UniformToFill"
+                               Width="150" Height="217"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Top"
+                               Margin="187,18,0,0"/>
+                        <Image Source="{Binding SelectedPhoto3}"
+                               Stretch="UniformToFill"
+                               Width="150" Height="217"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Top"
+                               Margin="18,252,0,0"/>
+                        <Image Source="{Binding SelectedPhoto4}"
+                               Stretch="UniformToFill"
+                               Width="150" Height="217"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Top"
+                               Margin="187,252,0,0"/>
 
-                                <!-- Selection highlight border -->
-                                <Border CornerRadius="8"
-                                        BorderBrush="#e94560"
-                                        BorderThickness="4"
-                                        IsVisible="{Binding IsSelected}"/>
+                        <!-- Frame Overlay — on top of selected photos -->
+                        <Image Source="avares://PhotoBooth.Event/Assets/DongFest/frame/dongfest_frame.png"
+                               Stretch="Uniform"/>
+                    </Grid>
+                </Viewbox>
 
-                                <!-- Checkmark badge -->
-                                <Border Background="#e94560"
-                                        CornerRadius="15"
-                                        Width="30" Height="30"
-                                        HorizontalAlignment="Right"
-                                        VerticalAlignment="Top"
-                                        Margin="0,5,5,0"
-                                        IsVisible="{Binding IsSelected}">
-                                    <TextBlock Text="✓"
-                                               Foreground="White"
-                                               FontSize="16" FontWeight="Bold"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"/>
-                                </Border>
-                            </Grid>
-                        </Button>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
 
-            <!-- Bottom: Selection counter + buttons -->
-            <StackPanel Grid.Row="2"
-                        HorizontalAlignment="Center"
-                        Orientation="Horizontal"
-                        Spacing="30"
-                        Margin="0,20,0,0">
+                <!-- ==================== BUTTONS ==================== -->
+                <!-- Transparent overlay buttons positioned exactly over the
+                     background-drawn buttons in back3.png.
+                     "← Quay lại": x=150-365, y=910-985 (216x75)
+                     "Tiếp theo →": x=839-1054, y=910-985 (216x75) -->
 
-                <Button Content="BACK"
-                        Command="{Binding GoBackCommand}"
-                        FontSize="32" FontWeight="Bold"
-                        Padding="60,30"
-                        Background="#333355"
-                        Foreground="White"/>
+                <!-- Back Button -->
+                <Button Command="{Binding GoBackCommand}"
+                        Classes="OverlayBtn"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Margin="150,910,0,0"
+                        Width="216" Height="75"/>
 
-                <!-- Selection counter -->
-                <TextBlock VerticalAlignment="Center"
-                           FontSize="32"
-                           Foreground="White">
-                    <Run Text="{Binding SelectedCount}"/>
-                    <Run Text=" / 4 selected"/>
-                </TextBlock>
+                <!-- Next/Confirm Button -->
+                <Grid HorizontalAlignment="Left"
+                      VerticalAlignment="Top"
+                      Margin="839,910,0,0"
+                      Width="216" Height="75">
+                    <!-- Confirm overlay button -->
+                    <Button Command="{Binding ConfirmCommand}"
+                            Classes="OverlayBtn"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"/>
+                    <!-- Dim overlay when confirm is disabled (< 4 photos selected) -->
+                    <Border Background="#60000000"
+                            CornerRadius="15"
+                            IsVisible="{Binding !CanConfirm}"
+                            IsHitTestVisible="False"/>
+                </Grid>
 
-                <Button Content="CONFIRM"
-                        Command="{Binding ConfirmCommand}"
-                        FontSize="32" FontWeight="Bold"
-                        Padding="60,30"
-                        Background="#e94560"
-                        Foreground="White"/>
-            </StackPanel>
-        </Grid>
-
-        <!-- Right side: 4 Preview slots -->
-        <StackPanel Grid.Column="1"
-                    VerticalAlignment="Center"
-                    Spacing="15"
-                    Margin="20,0,0,0">
-
-            <TextBlock Text="Preview"
-                       FontSize="24" FontWeight="Bold"
-                       Foreground="White"
-                       HorizontalAlignment="Center"
-                       Margin="0,0,0,10"/>
-
-            <Border CornerRadius="8" Background="#2a2a4a" Height="180" ClipToBounds="True">
-                <Image Source="{Binding SelectedPhoto1}" Stretch="UniformToFill"/>
-            </Border>
-            <Border CornerRadius="8" Background="#2a2a4a" Height="180" ClipToBounds="True">
-                <Image Source="{Binding SelectedPhoto2}" Stretch="UniformToFill"/>
-            </Border>
-            <Border CornerRadius="8" Background="#2a2a4a" Height="180" ClipToBounds="True">
-                <Image Source="{Binding SelectedPhoto3}" Stretch="UniformToFill"/>
-            </Border>
-            <Border CornerRadius="8" Background="#2a2a4a" Height="180" ClipToBounds="True">
-                <Image Source="{Binding SelectedPhoto4}" Stretch="UniformToFill"/>
-            </Border>
-        </StackPanel>
-
+            </Grid>
+        </Viewbox>
     </Grid>
 
 </UserControl>

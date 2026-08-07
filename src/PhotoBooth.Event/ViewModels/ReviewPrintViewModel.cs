@@ -24,7 +24,7 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
     private bool _isPrinting;
     private bool _disposed;
 
-    public int IdleTimeoutMs { get; set; } = 30000; // 30 seconds default
+    public int IdleTimeoutMs { get; set; } = 120000; // 2 minutes
 
     [ObservableProperty]
     private Bitmap? _finalImage;
@@ -238,12 +238,12 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
                 }
                 else
                 {
-                    UpdatePrintStatus("⚠️ Lỗi máy in");
+                    UpdatePrintStatus("Lỗi máy in");
                 }
             }
             else
             {
-                UpdatePrintStatus("⚠️ Không tìm thấy ảnh", 0);
+                UpdatePrintStatus("Không tìm thấy ảnh", 0);
             }
         }
         catch (OperationCanceledException)
@@ -280,7 +280,7 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
                 // OFFLINE MODE: hiện thông báo liên hệ nhân viên
                 System.Diagnostics.Debug.WriteLine($"[QR-ReviewPrint] Offline mode — seq: {SequentialNumber}");
                 IsOffline = true;
-                StatusText = "📴 Không có kết nối mạng";
+                StatusText = "Không có kết nối mạng";
                 return;
             }
 
@@ -296,7 +296,7 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
                     using var qrData = qrGenerator.CreateQrCode(preFetchedUrl, QRCoder.QRCodeGenerator.ECCLevel.M);
                     using var qrCode = new QRCoder.PngByteQRCode(qrData);
                     qrBytes = qrCode.GetGraphic(20, new byte[] { 0, 0, 0 }, new byte[] { 255, 255, 255 });
-                    overlayStatus = "📱 Quét mã QR để tải ảnh từ Google Drive";
+                    overlayStatus = "Quét mã QR để tải ảnh từ Google Drive";
                     System.Diagnostics.Debug.WriteLine("[QR-ReviewPrint] Generated successfully (Google Drive - instant)");
                 }
                 else
@@ -353,16 +353,16 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
                 var finalImagePath = _sessionService.CurrentSession.FinalImagePath;
                 if (!string.IsNullOrEmpty(finalImagePath))
                 {
-                    var success = await Task.Run(() => PhotoBooth.Infrastructure.Services.ImageCompositeService.OverlayQrCode(finalImagePath, qrBytes), ct);
+                    var success = await Task.Run(() => PhotoBooth.Infrastructure.Services.ImageCompositeService.OverlayQrCode(finalImagePath, qrBytes, DeviceConfig.QrCodeSizePercent), ct);
                     if (success)
                     {
-                        StatusText = overlayStatus ?? "✅ Đã tạo mã QR";
+                        StatusText = overlayStatus ?? "Đã tạo mã QR";
                         // Reload FinalImage inside the UI
                         await LoadFinalImageAsync();
                     }
                     else
                     {
-                        StatusText = "⚠️ Không thể chèn mã QR vào ảnh";
+                        StatusText = "Không thể chèn mã QR vào ảnh";
                     }
                 }
             }
@@ -375,7 +375,7 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
                 System.Diagnostics.Debug.WriteLine($"[QR-ReviewPrint] Timeout detected -> Offline mode");
                 NetworkCheckService.ResetCache();
                 IsOffline = true;
-                StatusText = "📴 Lỗi kết nối mạng";
+                StatusText = "Lỗi kết nối mạng";
             }
             // Expected when disposed
         }
@@ -384,7 +384,7 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
             System.Diagnostics.Debug.WriteLine($"[QR-ReviewPrint] Error: {ex.GetType().Name}");
             NetworkCheckService.ResetCache();
             IsOffline = true;
-            StatusText = "📴 Lỗi kết nối mạng";
+            StatusText = "Lỗi kết nối mạng";
         }
     }
 

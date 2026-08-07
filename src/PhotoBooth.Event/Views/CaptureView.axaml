@@ -5,79 +5,112 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
              x:Class="PhotoBooth.Event.Views.CaptureView"
-             x:DataType="vm:CaptureViewModel"
-             Background="#1a1a2e">
+             x:DataType="vm:CaptureViewModel">
 
     <Grid>
-        <!-- Background / Status -->
-        <TextBlock Text="{Binding StatusMessage}" 
-                   HorizontalAlignment="Center" 
-                   VerticalAlignment="Top" 
-                   Margin="20"
-                   FontSize="24" 
-                   Foreground="White" />
-                   
-        <TextBlock HorizontalAlignment="Left" 
-                   VerticalAlignment="Top" 
-                   Margin="20"
-                   FontSize="24" 
-                   Foreground="White">
-            <TextBlock.Text>
-                <MultiBinding StringFormat="Photo {0} / {1}">
-                    <Binding Path="CurrentPhotoIndex" />
-                    <Binding Path="TotalPhotos" />
-                </MultiBinding>
-            </TextBlock.Text>
-        </TextBlock>
+        <!-- Content Scaler — same pattern as StartView -->
+        <Viewbox Stretch="Uniform">
+            <Grid Width="1920" Height="1080">
+                <!-- Background Image (Now scales synchronously with the UI content) -->
+                <Image Source="avares://PhotoBooth.Event/Assets/DongFest/back/back2.png" 
+                       Stretch="UniformToFill"/>
 
-        <!-- Camera Preview -->
-        <Viewbox Stretch="Uniform" Margin="60" IsVisible="{Binding IsCameraReady}">
-            <Image Source="{Binding CameraPreview}" 
-                   HorizontalAlignment="Center" 
-                   VerticalAlignment="Center" />
+                <!-- Camera Preview — positioned exactly on the white rectangle in back2.png -->
+                <!-- Rect: x=678, y=132, w=566, h=817 -->
+                <!-- UniformToFill: fills height, crops sides → top/bottom edges match frame -->
+                <Border ClipToBounds="True"
+                        HorizontalAlignment="Left" VerticalAlignment="Top"
+                        Margin="678,132,0,0"
+                        Width="566" Height="817"
+                        IsVisible="{Binding IsCameraReady}">
+                    <Image Source="{Binding CameraPreview}" Stretch="UniformToFill" />
+                </Border>
+
+                <!-- Flash Effect — covers only the camera preview area -->
+                <Rectangle Fill="White" 
+                           IsVisible="{Binding IsFlashing}" 
+                           Opacity="0.9"
+                           HorizontalAlignment="Left" VerticalAlignment="Top"
+                           Margin="678,132,0,0"
+                           Width="566" Height="817" />
+
+                <!-- Photo Count — left bubble ("Đã chụp X/Y") -->
+                <!-- Matches original design: bubble at approx x=60, y=260 -->
+                <TextBlock HorizontalAlignment="Left" 
+                           VerticalAlignment="Top" 
+                           Margin="90,415,0,0"
+                           FontFamily="{StaticResource UTMCookies}"
+                           FontSize="28" 
+                           FontWeight="Bold"
+                           Foreground="#1B3A6B"
+                           TextAlignment="Center"
+                           Width="190">
+                    <TextBlock.Text>
+                        <MultiBinding StringFormat="Đã chụp&#x0a;{0}/{1}">
+                            <Binding Path="CurrentPhotoIndex" />
+                            <Binding Path="TotalPhotos" />
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
+
+                <!-- Countdown — positioned on the right bubble ("Sẵn sàng? N") -->
+                <!-- Bubble center approximately at x=1300, y=200 -->
+                <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top"
+                            Margin="0,205,222,0"
+                            Width="220"
+                            IsVisible="{Binding IsShootingInProgress}">
+                    <TextBlock Text="Sẵn sàng?" 
+                               FontFamily="{StaticResource UTMCookies}"
+                               FontSize="40" 
+                               FontWeight="Bold"
+                               Foreground="#FEE000"
+                               TextAlignment="Center"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding Countdown}" 
+                               FontFamily="{StaticResource UTMCookies}"
+                               FontSize="80" 
+                               FontWeight="Bold" 
+                               Foreground="#1B3A6B"
+                               TextAlignment="Center"
+                               HorizontalAlignment="Center"
+                               Margin="0,-5,0,0"/>
+                </StackPanel>
+
+
+                <!-- Start Button — right side center, disappears when shooting -->
+                <!-- Using next_btn.png image like StartView pattern -->
+                <Image x:Name="StartBtn"
+                       Source="avares://PhotoBooth.Event/Assets/DongFest/button/next_btn.png"
+                       Width="250"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Center"
+                       Margin="0,0,60,0"
+                       Cursor="Hand"
+                       IsVisible="{Binding CanStartShooting}"
+                       PointerPressed="OnStartBtnPressed"
+                       PointerReleased="OnStartBtnReleased">
+                    <Image.Transitions>
+                        <Transitions>
+                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1" Easing="QuadraticEaseOut" />
+                        </Transitions>
+                    </Image.Transitions>
+                </Image>
+
+                <!-- Camera not found message -->
+                <TextBlock Text="{Binding StatusMessage}" 
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           FontSize="36"
+                           FontWeight="Bold"
+                           Foreground="#CC0000"
+                           IsVisible="{Binding !IsCameraReady}">
+                    <TextBlock.Effect>
+                        <DropShadowEffect BlurRadius="5" Color="White" Opacity="0.8" OffsetX="0" OffsetY="0" />
+                    </TextBlock.Effect>
+                </TextBlock>
+
+            </Grid>
         </Viewbox>
-
-        <!-- Flash Effect -->
-        <Rectangle Fill="White" 
-                   IsVisible="{Binding IsFlashing}" 
-                   Opacity="0.8" 
-                   HorizontalAlignment="Stretch" 
-                   VerticalAlignment="Stretch" />
-
-        <!-- Countdown -->
-        <TextBlock Text="{Binding Countdown}" 
-                   IsVisible="{Binding IsCountingDown}" 
-                   FontSize="200" 
-                   FontWeight="Bold" 
-                   Foreground="White"
-                   HorizontalAlignment="Center" 
-                   VerticalAlignment="Center">
-            <!-- Basic drop shadow for visibility over video feed -->
-            <TextBlock.Effect>
-                <DropShadowEffect BlurRadius="10" Color="Black" Opacity="0.8" OffsetX="5" OffsetY="5" />
-            </TextBlock.Effect>
-        </TextBlock>
-
-        <!-- Controls -->
-        <StackPanel HorizontalAlignment="Center" 
-                    VerticalAlignment="Bottom" 
-                    Margin="40" 
-                    Orientation="Horizontal" 
-                    Spacing="20">
-            <Button Content="Start Capture" 
-                    Command="{Binding StartShootingSequenceCommand}" 
-                    IsVisible="{Binding !IsShootingInProgress}"
-                    IsEnabled="{Binding IsCameraReady}"
-                    FontSize="24" 
-                    Padding="40,20" />
-                    
-            <Button Content="Skip" 
-                    Command="{Binding SkipCommand}" 
-                    IsVisible="{Binding IsShootingInProgress}"
-                    FontSize="24" 
-                    Padding="40,20" 
-                    Background="#880000" />
-        </StackPanel>
     </Grid>
 
 </UserControl>

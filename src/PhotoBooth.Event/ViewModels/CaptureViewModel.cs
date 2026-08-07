@@ -50,6 +50,26 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool _isShootingInProgress;
 
+    /// <summary>
+    /// Computed: true when camera is ready and no shooting in progress.
+    /// Used to show/hide the start button in CaptureView.
+    /// </summary>
+    public bool CanStartShooting => IsCameraReady && !IsShootingInProgress;
+
+    /// <summary>
+    /// Computed: true when shooting is in progress but NOT counting down.
+    /// Used to show "📸 X/Y" capture status in the right bubble.
+    /// </summary>
+    public bool IsCaptureMoment => IsShootingInProgress && !IsCountingDown;
+
+    partial void OnIsCameraReadyChanged(bool value) => OnPropertyChanged(nameof(CanStartShooting));
+    partial void OnIsShootingInProgressChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanStartShooting));
+        OnPropertyChanged(nameof(IsCaptureMoment));
+    }
+    partial void OnIsCountingDownChanged(bool value) => OnPropertyChanged(nameof(IsCaptureMoment));
+
     [ObservableProperty]
     private bool _isFlashing;
 

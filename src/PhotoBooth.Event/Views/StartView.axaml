@@ -5,26 +5,35 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
              x:Class="PhotoBooth.Event.Views.StartView"
-             x:DataType="vm:StartViewModel"
-             Background="#1a1a2e">
+             x:DataType="vm:StartViewModel">
 
-    <!-- TODO: Extract #1a1a2e to a shared StaticResource when finalizing design -->
+    <Grid>
+        <!-- Content Scaler -->
+        <Viewbox Stretch="Uniform">
+            <Grid Width="1920" Height="1080">
+                <!-- Background Image (Now scales synchronously with the UI content) -->
+                <Image Source="avares://PhotoBooth.Event/Assets/DongFest/back/back1.png" 
+                       Stretch="UniformToFill"/>
 
-    <StackPanel HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Spacing="40">
-        <TextBlock Text="PhotoBooth Event"
-                   FontSize="48" FontWeight="Bold"
-                   Foreground="White"
-                   HorizontalAlignment="Center"/>
-        <TextBlock Text="Tap to start your photo session"
-                   FontSize="24" Foreground="#aaaaaa"
-                   HorizontalAlignment="Center"/>
-        <Button Content="START"
-                Command="{Binding StartCommand}"
-                FontSize="32" FontWeight="Bold"
-                Padding="60,30"
-                HorizontalAlignment="Center"/>
-    </StackPanel>
+                <!-- Next Button Image — animation xử lý trong code-behind -->
+                <!-- Chỉnh Width để phóng to/thu nhỏ, Margin để di chuyển vị trí -->
+                <Image Source="avares://PhotoBooth.Event/Assets/DongFest/button/next_btn.png"
+                       Width="300"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Margin="650,500,0,0"
+                       Cursor="Hand"
+                       PointerPressed="OnNextBtnPressed"
+                       PointerReleased="OnNextBtnReleased">
+                    <Image.Transitions>
+                        <Transitions>
+                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1" Easing="QuadraticEaseOut" />
+                        </Transitions>
+                    </Image.Transitions>
+                </Image>
+
+            </Grid>
+        </Viewbox>
+    </Grid>
 
 </UserControl>

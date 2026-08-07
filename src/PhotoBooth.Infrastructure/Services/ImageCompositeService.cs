@@ -294,7 +294,7 @@ public static class ImageCompositeService
     /// <param name="imagePath">Path to the target image (will be overwritten)</param>
     /// <param name="qrBytes">QR code image bytes (PNG format from QRCoder)</param>
     /// <returns>True if overlay was successfully applied, false otherwise</returns>
-    public static bool OverlayQrCode(string imagePath, byte[] qrBytes)
+    public static bool OverlayQrCode(string imagePath, byte[] qrBytes, int sizePercent = 8)
     {
         if (string.IsNullOrEmpty(imagePath) || qrBytes == null || qrBytes.Length == 0 || !File.Exists(imagePath))
             return false;
@@ -329,8 +329,8 @@ public static class ImageCompositeService
             return false;
         }
 
-        // Calculate scaling (10-15% of image height) -> let's use 12%
-        int targetQrSize = (int)(image.Height * 0.12);
+        // Calculate scaling based on sizePercent of image height
+        int targetQrSize = (int)(image.Height * (sizePercent / 100.0));
         
         // Ensure QR size is reasonable, at least 100px for reliable scanning
         targetQrSize = Math.Max(100, targetQrSize);
@@ -359,9 +359,9 @@ public static class ImageCompositeService
             resizedQr.CopyTo(convertedQr);
         }
 
-        // Position: bottom-left corner, 20px margin
+        // Position: bottom-right corner, 20px margin
         int margin = 20;
-        int x = margin;
+        int x = image.Width - targetQrSize - margin;
         int y = image.Height - targetQrSize - margin;
 
         // Clamp just in case

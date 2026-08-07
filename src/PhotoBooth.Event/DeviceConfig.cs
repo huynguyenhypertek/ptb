@@ -23,6 +23,7 @@ public static class DeviceConfig
     public static string PrinterName { get; set; } = "";
     public static int CountdownSeconds { get; set; } = 3;
     public static string EventName { get; set; } = "DONGFEST";
+    public static int QrCodeSizePercent { get; set; } = 10; // % of image height (1-30)
 
     // Google Drive configuration
     public static bool GoogleDriveEnabled { get; set; } = true;
@@ -131,6 +132,11 @@ public static class DeviceConfig
                 if (!string.IsNullOrWhiteSpace(name))
                     EventName = name;
             }
+            else if (arg.StartsWith("--qrCodeSizePercent="))
+            {
+                if (int.TryParse(arg.Substring("--qrCodeSizePercent=".Length), out var qr) && qr >= 1 && qr <= 30)
+                    QrCodeSizePercent = qr;
+            }
             else if (arg.StartsWith("--"))
             {
                 Console.WriteLine($"[CONFIG] WARNING: Unrecognized argument: {arg}");
@@ -141,6 +147,6 @@ public static class DeviceConfig
             $"[CONFIG] StoreId={StoreId}, DeviceId={DeviceId}, PlanType={PlanType}, " +
             $"ApiBaseUrl={ApiBaseUrl}, GoogleDriveEnabled={GoogleDriveEnabled}, " +
             $"GoogleDrivePath={GetMaskedGDrivePath()}, AppsScriptUrl={GetMaskedAppsScriptUrl()}, " +
-            $"EnablePrinting={EnablePrinting}, PrinterName={PrinterName}, CountdownSeconds={CountdownSeconds}, EventName={EventName}");
+            $"EnablePrinting={EnablePrinting}, PrinterName={PrinterName}, CountdownSeconds={CountdownSeconds}, EventName={EventName}, QrCodeSizePercent={QrCodeSizePercent}");
     }
 }

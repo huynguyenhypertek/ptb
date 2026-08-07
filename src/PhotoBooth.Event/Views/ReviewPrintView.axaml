@@ -9,62 +9,56 @@
              Background="#1a1a2e">
 
     <Grid>
-        <!-- Background / Status -->
-        <TextBlock Text="{Binding StatusText}" 
-                   HorizontalAlignment="Center" 
-                   VerticalAlignment="Top" 
-                   Margin="20"
-                   FontSize="24" 
-                   Foreground="White" />
-                   
-        <TextBlock HorizontalAlignment="Left" 
-                   VerticalAlignment="Top" 
-                   Margin="20"
-                   FontSize="24" 
-                   Foreground="White"
-                   Text="{Binding SequentialNumber}" />
+        <!-- Content Scaler — everything inside (including background) scales together -->
+        <Viewbox Stretch="Uniform">
+            <Grid Width="1920" Height="1080">
 
-        <!-- Final Image Preview -->
-        <Viewbox Stretch="Uniform" Margin="60,100,60,150">
-            <Image Source="{Binding FinalImage}" 
-                   HorizontalAlignment="Center" 
-                   VerticalAlignment="Center" />
+                <!-- Background Image -->
+                <Image Source="avares://PhotoBooth.Event/Assets/DongFest/back/back4.png"
+                       Stretch="UniformToFill"/>
+
+                <!-- Status Text -->
+                <TextBlock Text="{Binding StatusText}" 
+                           HorizontalAlignment="Center" 
+                           VerticalAlignment="Top" 
+                           Margin="20"
+                           FontSize="28" 
+                           FontFamily="{StaticResource UTMCookies}"
+                           Foreground="White" />
+
+                <TextBlock HorizontalAlignment="Left" 
+                           VerticalAlignment="Top" 
+                           Margin="20"
+                           FontSize="28" 
+                           FontFamily="{StaticResource UTMCookies}"
+                           Foreground="White"
+                           Text="{Binding SequentialNumber}" />
+
+                <!-- Final Image Preview -->
+                <Viewbox Stretch="Uniform" Margin="60,100,60,150">
+                    <Image Source="{Binding FinalImage}" 
+                           HorizontalAlignment="Center" 
+                           VerticalAlignment="Center" />
+                </Viewbox>
+
+                <!-- Next Button Image — same style as screen 1 -->
+                <Image Source="avares://PhotoBooth.Event/Assets/DongFest/button/next_btn.png"
+                       Width="180"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Bottom"
+                       Margin="0,0,0,40"
+                       Cursor="Hand"
+                       PointerPressed="OnNextBtnPressed"
+                       PointerReleased="OnNextBtnReleased">
+                    <Image.Transitions>
+                        <Transitions>
+                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1" Easing="QuadraticEaseOut" />
+                        </Transitions>
+                    </Image.Transitions>
+                </Image>
+
+            </Grid>
         </Viewbox>
-
-        <!-- Controls -->
-        <StackPanel HorizontalAlignment="Center" 
-                    VerticalAlignment="Bottom" 
-                    Margin="40" 
-                    Orientation="Horizontal" 
-                    Spacing="20">
-                    
-            <!-- Copies Selection -->
-            <Button Content="-" 
-                    Command="{Binding DecreaseCopiesCommand}"
-                    FontSize="24" Padding="20,10" />
-            
-            <TextBlock Text="{Binding PrintCopies}" 
-                       FontSize="30" Foreground="White" 
-                       VerticalAlignment="Center" Margin="10,0"/>
-            
-            <Button Content="+" 
-                    Command="{Binding IncreaseCopiesCommand}"
-                    FontSize="24" Padding="20,10" />
-                    
-            <Button Content="In thêm" 
-                    Command="{Binding StartPrintingCommand}" 
-                    FontSize="24" 
-                    Padding="30,20" 
-                    Background="#0055ff"
-                    Foreground="White" />
-                    
-            <Button Content="Hoàn tất" 
-                    Command="{Binding ReturnToStartCommand}" 
-                    FontSize="24" 
-                    Padding="40,20" 
-                    Background="#008800"
-                    Foreground="White" />
-        </StackPanel>
     </Grid>
 
 </UserControl>

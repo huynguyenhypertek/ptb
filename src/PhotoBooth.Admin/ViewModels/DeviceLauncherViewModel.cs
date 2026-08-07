@@ -293,11 +293,20 @@ public partial class DeviceLauncherViewModel : ObservableObject
 
     private static async Task MonitorProcessAsync(DeviceLaunchItem item, Process process)
     {
+        var pid = process.Id;
+        var name = item.DisplayName;
+        Console.WriteLine($"[MONITOR] Watching PID {pid} for {name}");
+        
         try
         {
             await process.WaitForExitAsync();
+            var exitCode = process.ExitCode;
+            Console.WriteLine($"[MONITOR] PID {pid} ({name}) exited with code {exitCode}");
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MONITOR] PID {pid} ({name}) monitoring error: {ex.Message}");
+        }
 
         // BUG FIX (Bug 2): Update observable properties on the UI thread.
         // Raising PropertyChanged from a background thread violates Avalonia's threading rules
