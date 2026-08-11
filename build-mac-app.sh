@@ -12,7 +12,15 @@ cd "$SCRIPT_DIR"
 # ── Cấu hình ─────────────────────────────────────────────────────────────────
 APP_NAME="PhotoBoothAdmin"
 APP_BUNDLE="$SCRIPT_DIR/$APP_NAME.app"
-RUNTIME="osx-arm64"          # M1/M2/M3 Pro — đổi thành osx-x64 nếu dùng Intel
+
+# Tự động nhận diện kiến trúc CPU
+ARCH=$(uname -m)
+if [ "$ARCH" = "x86_64" ]; then
+    RUNTIME="osx-x64"
+else
+    RUNTIME="osx-arm64"
+fi
+
 CONFIG="Release"
 
 SRC="$SCRIPT_DIR/src"
@@ -36,7 +44,7 @@ warn() { echo -e "${YELLOW}⚠ $1${NC}"; }
 # =============================================================================
 echo ""
 echo "╔══════════════════════════════════════════════════════╗"
-echo "║        PhotoBooth — Mac App Builder (osx-arm64)      ║"
+echo "║        PhotoBooth — Mac App Builder ($RUNTIME)       ║"
 echo "╚══════════════════════════════════════════════════════╝"
 echo ""
 
