@@ -8,32 +8,30 @@ namespace PhotoBooth.Admin.Tests.ViewModels;
 public class DeviceLauncherViewModelTests
 {
     [Fact]
-    public void IsEventMode_DefaultIsFalse()
+    public void DeviceLaunchItem_IsEventMode_DefaultIsFalse()
     {
-        // Arrange
-        var apiService = new ApiService();
-        var settingsService = new SettingsService();
-        
-        // Act
-        var viewModel = new DeviceLauncherViewModel(apiService, settingsService);
-        
+        // Arrange & Act
+        var item = new DeviceLaunchItem
+        {
+            User = new UserItem { Username = "TestDevice" }
+        };
+
         // Assert
-        Assert.False(viewModel.IsEventMode, "IsEventMode should be false by default (UI Mode).");
+        Assert.False(item.IsEventMode, "IsEventMode should be false by default (UI Mode).");
     }
 
     [Fact]
-    public void IsEventMode_CanBeToggledToTrue()
+    public void DeviceLaunchItem_IsEventMode_CanBeSetToTrue()
     {
-        // Arrange
-        var apiService = new ApiService();
-        var settingsService = new SettingsService();
-        var viewModel = new DeviceLauncherViewModel(apiService, settingsService);
-        
-        // Act
-        viewModel.IsEventMode = true;
-        
+        // Arrange & Act
+        var item = new DeviceLaunchItem
+        {
+            User = new UserItem { Username = "TestDevice" },
+            IsEventMode = true
+        };
+
         // Assert
-        Assert.True(viewModel.IsEventMode, "IsEventMode should be settable to true (Event Mode).");
+        Assert.True(item.IsEventMode, "IsEventMode should be settable to true (Event Mode).");
     }
 
     [Fact]
@@ -42,14 +40,12 @@ public class DeviceLauncherViewModelTests
         // Arrange
         var apiService = new ApiService();
         var settingsService = new SettingsService();
-        var viewModel = new DeviceLauncherViewModel(apiService, settingsService)
-        {
-            IsEventMode = false
-        };
+        var viewModel = new DeviceLauncherViewModel(apiService, settingsService);
 
         var launchItem = new DeviceLaunchItem
         {
-            User = new UserItem { Username = "TestDevice1" }
+            User = new UserItem { Username = "TestDevice1" },
+            IsEventMode = false
         };
 
         // Act
@@ -78,14 +74,12 @@ public class DeviceLauncherViewModelTests
         // Arrange
         var apiService = new ApiService();
         var settingsService = new SettingsService();
-        var viewModel = new DeviceLauncherViewModel(apiService, settingsService)
-        {
-            IsEventMode = true
-        };
+        var viewModel = new DeviceLauncherViewModel(apiService, settingsService);
 
         var launchItem = new DeviceLaunchItem
         {
-            User = new UserItem { Username = "TestDevice2" }
+            User = new UserItem { Username = "TestDevice2" },
+            IsEventMode = true
         };
 
         // Act
@@ -108,3 +102,4 @@ public class DeviceLauncherViewModelTests
         }
     }
 }
+

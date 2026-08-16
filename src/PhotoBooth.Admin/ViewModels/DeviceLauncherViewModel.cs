@@ -336,7 +336,9 @@ public partial class DeviceLauncherViewModel : ObservableObject
         args += $" --enablePrinting={settings.EnablePrinting}";
         if (!string.IsNullOrEmpty(settings.PrinterName))
             args += $" --printerName=\"{settings.PrinterName}\"";
-        
+        if (!string.IsNullOrEmpty(settings.PrintMedia))
+            args += $" --printMedia=\"{settings.PrintMedia}\"";
+
         args += $" --countdownSeconds={settings.CountdownSeconds}";
         if (!string.IsNullOrEmpty(settings.EventName))
             args += $" --eventName=\"{settings.EventName}\"";

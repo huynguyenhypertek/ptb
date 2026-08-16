@@ -331,7 +331,7 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
                 var sessionName = _sessionService.CurrentSession.SessionFolderName;
                 var photoIndex = CapturedPhotos.Count + 1;
                 var customFileName = $"{DeviceConfig.EventName}_{sessionName}_{photoIndex}.jpg";
-                var path = _cameraService.CapturePhoto(sessionDir, customFileName);
+                var path = _cameraService.CapturePhoto(sessionDir!, customFileName);
                 token.ThrowIfCancellationRequested();
                 return path;
             }, token);

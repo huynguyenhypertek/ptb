@@ -108,9 +108,20 @@
 
                     <StackPanel Spacing="6">
                         <TextBlock Text="Tên máy in trong hệ thống (Printer Name)" Foreground="#aaa" FontSize="13"/>
-                        <TextBox Text="{Binding PrinterName}" 
+                        <TextBox Text="{Binding PrinterName}"
                                  Watermark="VD: DNP DS-RX1HS"
                                  Padding="12,10" CornerRadius="8" FontSize="13"/>
+                        <TextBlock Text="Lấy đúng tên bằng lệnh: lpstat -p"
+                                   Foreground="#666" FontSize="11"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Khổ giấy (Print Media)" Foreground="#aaa" FontSize="13"/>
+                        <TextBox Text="{Binding PrintMedia}"
+                                 Watermark="VD: 300dnp6x4"
+                                 Padding="12,10" CornerRadius="8" FontSize="13"/>
+                        <TextBlock Text="DNP DS-RX1HS khổ 10x15cm = 300dnp6x4. Bỏ trống sẽ in ra khổ mặc định của driver (6x8)."
+                                   Foreground="#666" FontSize="11" TextWrapping="Wrap"/>
                     </StackPanel>
                 </StackPanel>
             </Border>

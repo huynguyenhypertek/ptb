@@ -222,29 +222,43 @@ public partial class ReviewPrintViewModel : ViewModelBase, IDisposable
 
         try
         {
-            UpdatePrintStatus("Đang gửi lệnh in...", 50);
-            
-            if (_sessionService.CurrentSession.FinalImagePath != null)
+            if (string.IsNullOrEmpty(_sessionService.CurrentSession.FinalImagePath))
             {
-                var success = await _printService.PrintImageAsync(
-                    _sessionService.CurrentSession.FinalImagePath,
-                    DeviceConfig.PrinterName, 
-                    PrintCopies, 
-                    _cts.Token,
-                    DeviceConfig.PrintMedia);
-                
-                if (success)
-                {
-                    UpdatePrintStatus("Đã gửi lệnh in", 100);
-                }
-                else
-                {
-                    UpdatePrintStatus("Lỗi máy in");
-                }
+                UpdatePrintStatus("Không tìm thấy ảnh", 0);
+                return;
+            }
+
+            // Tôn trọng công tắc in của Admin. Trước đây Event bỏ qua cả hai giá trị này,
+            // nên vẫn in khi đã tắt, và khi PrinterName rỗng thì `lp` gửi ảnh sang máy in
+            // mặc định của hệ thống — thường là máy in văn phòng, không phải máy in ảnh.
+            if (!DeviceConfig.EnablePrinting)
+            {
+                UpdatePrintStatus("Đã lưu ảnh (chế độ không in)", 100);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(DeviceConfig.PrinterName))
+            {
+                UpdatePrintStatus("Chưa cấu hình máy in", 0);
+                return;
+            }
+
+            UpdatePrintStatus("Đang gửi lệnh in...", 50);
+
+            var success = await _printService.PrintImageAsync(
+                _sessionService.CurrentSession.FinalImagePath,
+                DeviceConfig.PrinterName,
+                PrintCopies,
+                _cts.Token,
+                DeviceConfig.PrintMedia);
+
+            if (success)
+            {
+                UpdatePrintStatus("Đã gửi lệnh in", 100);
             }
             else
             {
-                UpdatePrintStatus("Không tìm thấy ảnh", 0);
+                UpdatePrintStatus("Lỗi máy in — gọi nhân viên hỗ trợ");
             }
         }
         catch (OperationCanceledException)

@@ -1,14 +1,36 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using PhotoBooth.Core.Interfaces;
+using PhotoBooth.Event;
 using PhotoBooth.Event.Services;
 using PhotoBooth.Event.ViewModels;
 using Xunit;
 
 namespace PhotoBooth.Tests.ViewModels;
 
-public class ReviewPrintViewModelTests
+[Collection("DeviceConfig")]
+public class ReviewPrintViewModelTests : IDisposable
 {
+    private readonly bool _origEnablePrinting = DeviceConfig.EnablePrinting;
+    private readonly string _origPrinterName = DeviceConfig.PrinterName;
+
+    /// <summary>
+    /// ReviewPrintViewModel chỉ in khi Admin đã bật in VÀ có tên máy in.
+    /// Bật cả hai để các test đi vào đúng nhánh gọi IPrintService.
+    /// </summary>
+    public ReviewPrintViewModelTests()
+    {
+        DeviceConfig.EnablePrinting = true;
+        DeviceConfig.PrinterName = "test-printer";
+    }
+
+    public void Dispose()
+    {
+        DeviceConfig.EnablePrinting = _origEnablePrinting;
+        DeviceConfig.PrinterName = _origPrinterName;
+    }
+
     private class MockPrintService : IPrintService
     {
         public bool PrintCalled => PrintCallCount > 0;
@@ -17,7 +39,7 @@ public class ReviewPrintViewModelTests
         public int LastCopies { get; private set; }
         public int Delay { get; set; } = 0;
 
-        public async Task<bool> PrintImageAsync(string imagePath, string printerName, int copies, CancellationToken ct)
+        public async Task<bool> PrintImageAsync(string imagePath, string printerName, int copies, CancellationToken ct, string mediaType = "")
         {
             PrintCallCount++;
             LastImagePath = imagePath;

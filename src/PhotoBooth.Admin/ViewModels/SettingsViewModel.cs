@@ -27,6 +27,9 @@ public partial class SettingsViewModel : ObservableObject
     private string _printerName = "";
 
     [ObservableProperty]
+    private string _printMedia = "300dnp6x4";
+
+    [ObservableProperty]
     private int _countdownSeconds = 3;
 
     [ObservableProperty]
@@ -60,6 +63,7 @@ public partial class SettingsViewModel : ObservableObject
         AppsScriptUrl = settingsService.Settings.AppsScriptUrl;
         EnablePrinting = settingsService.Settings.EnablePrinting;
         PrinterName = settingsService.Settings.PrinterName;
+        PrintMedia = settingsService.Settings.PrintMedia;
         CountdownSeconds = settingsService.Settings.CountdownSeconds;
         EventName = settingsService.Settings.EventName;
 
@@ -151,6 +155,7 @@ public partial class SettingsViewModel : ObservableObject
         _settingsService.Settings.AppsScriptUrl = AppsScriptUrl;
         _settingsService.Settings.EnablePrinting = EnablePrinting;
         _settingsService.Settings.PrinterName = PrinterName;
+        _settingsService.Settings.PrintMedia = PrintMedia;
         _settingsService.Settings.CountdownSeconds = CountdownSeconds;
         _settingsService.Settings.EventName = EventName;
 

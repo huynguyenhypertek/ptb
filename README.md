@@ -220,27 +220,75 @@ lpstat -W completed | tail -10
 
 ---
 
-## 📦 Triển khai sang máy mới
+## 📦 Triển khai sang máy Mac mới
 
-### Bước 1: Cài đặt .NET SDK
+### Yêu cầu phần cứng
+
+| Thiết bị | Bắt buộc? | Ghi chú |
+|----------|-----------|---------|
+| Mac (Intel x64 hoặc Apple Silicon) | ✅ | macOS 13+ khuyến nghị |
+| Camera USB hoặc HDMI Capture Card | ✅ | Capture card HDMI→USB được macOS nhận tự động (UVC) |
+| Máy in ảnh (DNP DS-RX1HS, v.v.) | Tùy chọn | Kết nối USB, cần cài driver riêng |
+| Màn hình cảm ứng hoặc iPad | Tùy chọn | Dùng làm màn hình khách tương tác |
+
+### Bước 1: Cài đặt phần mềm cần thiết
+
+#### .NET 10 SDK (bắt buộc)
 
 ```bash
-# macOS (qua Homebrew)
+# Cách 1: Tải installer từ Microsoft (khuyến nghị)
+# Vào: https://dotnet.microsoft.com/download/dotnet/10.0
+# Chọn đúng kiến trúc:
+#   - Mac Intel     → macOS x64
+#   - Mac M1/M2/M3  → macOS Arm64
+
+# Cách 2: Dùng script có sẵn trong repo
+./dotnet-install.sh --channel 10.0
+
+# Cách 3: Homebrew
 brew install dotnet
 
-# Hoặc tải từ: https://dotnet.microsoft.com/download/dotnet/10.0
+# Kiểm tra sau khi cài:
+dotnet --version   # Phải hiện 10.x.x
 ```
 
-### Bước 2: Copy project
+#### Git (nếu chưa có)
 
 ```bash
-# Copy toàn bộ thư mục project sang máy mới
-# Hoặc clone từ Git
+# macOS thường có sẵn, kiểm tra:
+git --version
+
+# Nếu chưa có, cài qua Xcode Command Line Tools:
+xcode-select --install
+```
+
+#### Google Drive Desktop (tùy chọn — chỉ khi dùng tính năng sync ảnh)
+
+1. Tải từ https://www.google.com/drive/download/
+2. Cài đặt và đăng nhập bằng **cùng tài khoản Gmail** sở hữu Apps Script
+3. Tạo folder `PhotoBooth` trong Google Drive
+4. Ghi nhớ đường dẫn local, ví dụ: `/Users/<tên>/Library/CloudStorage/GoogleDrive-<email>/Drive của tôi/PhotoBooth/`
+
+> ⚠️ **Quan trọng:** Đường dẫn Google Drive trên máy và Apps Script URL **phải cùng 1 tài khoản Gmail**. Nếu khác account, app sẽ không tìm thấy folder đã sync.
+
+#### Driver máy in (tùy chọn — chỉ khi in ảnh)
+
+- **DNP DS-RX1HS**: Tải driver từ [dnpphoto.com/support/downloads](https://www.dnpphoto.com/en-us/support/downloads/)
+- **Máy in khác**: Thêm trong **System Settings → Printers & Scanners**
+- Kiểm tra máy in đã nhận:
+  ```bash
+  lpstat -p          # Xem danh sách máy in
+  lpstat -p -d       # Xem máy in mặc định
+  ```
+
+### Bước 2: Clone và cấu hình project
+
+```bash
 git clone <repository-url>
 cd ptb
 ```
 
-### Bước 3: Cấu hình JWT Secret
+#### Cấu hình JWT Secret (bắt buộc cho API)
 
 ```bash
 cd src/PhotoBooth.API
@@ -248,17 +296,34 @@ dotnet user-secrets set "Jwt:Key" "your-secret-key-must-be-at-least-32-character
 cd ../..
 ```
 
-### Bước 4: Chạy hệ thống
+> ⚠️ Key phải dài ít nhất 32 ký tự.
+
+### Bước 3: Chạy hệ thống
+
+#### Cách A: Chạy từ source (dev mode)
 
 ```bash
 # Terminal 1: Chạy API (tự tạo DB + tài khoản mặc định)
 dotnet run --project src/PhotoBooth.API
 
-# Terminal 2: Chạy Admin (sẽ tự khởi động Event app)
+# Terminal 2: Chạy Admin (đăng nhập rồi khởi động Event/UI app từ giao diện)
 dotnet run --project src/PhotoBooth.Admin
 ```
 
-### Bước 5: Đăng nhập Admin
+#### Cách B: Build app bundle (production)
+
+```bash
+chmod +x build-mac-app.sh
+./build-mac-app.sh
+# → Tạo PhotoBoothAdmin.app (tự nhận diện Intel x64 / Apple Silicon arm64)
+
+# Chạy:
+open PhotoBoothAdmin.app
+```
+
+> 💡 Lần đầu mở app trên macOS có thể bị chặn bởi Gatekeeper. Vào **System Settings → Privacy & Security** → nhấn **Open Anyway**.
+
+### Bước 4: Đăng nhập Admin và cấu hình
 
 | Tài khoản | Mật khẩu | Vai trò |
 |-----------|----------|--------|
@@ -266,7 +331,31 @@ dotnet run --project src/PhotoBooth.Admin
 | `adminCH1` | `admin123` | StoreAdmin |
 | `Pb1_Ch1` | `admin123` | Device |
 
-> ⚠️ **Lưu ý:** Database SQLite tự động tạo khi chạy API lần đầu, **không cần cài database riêng**.
+> Database SQLite tự động tạo khi chạy API lần đầu, **không cần cài database riêng**.
+
+Sau khi đăng nhập Admin, vào tab **Cài đặt** để cấu hình:
+- **Google Drive**: Bật/tắt, đường dẫn folder, Apps Script URL
+- **Máy in**: Bật/tắt, tên máy in (lấy từ `lpstat -p`), khổ giấy
+- **Sự kiện**: Tên sự kiện, thời gian đếm ngược
+
+### Bước 5: Cấp quyền Camera (macOS)
+
+Lần đầu khởi động app Event/UI, macOS sẽ hỏi quyền truy cập camera → nhấn **Allow**. Nếu lỡ từ chối:
+
+```
+System Settings → Privacy & Security → Camera → bật cho PhotoBooth
+```
+
+### Xử lý sự cố thường gặp
+
+| Vấn đề | Nguyên nhân | Cách sửa |
+|--------|------------|----------|
+| `dotnet: command not found` | Chưa cài .NET SDK hoặc chưa thêm vào PATH | Cài lại .NET SDK, hoặc thêm `export PATH="$HOME/.dotnet:$PATH"` vào `~/.zshrc` |
+| Camera không hiện hình | Chưa cấp quyền camera | System Settings → Privacy & Security → Camera |
+| Google Drive "folder not found" | Apps Script và Drive path khác account Gmail | Dùng chung 1 account cho cả hai |
+| Máy in "offline" | Chưa cài driver hoặc chưa bật máy in | Cài driver, kiểm tra `lpstat -p`, mở CUPS web UI tại `http://localhost:631` |
+| App bị Gatekeeper chặn | macOS chặn app chưa ký | System Settings → Privacy & Security → Open Anyway |
+| Port 5148 đã bị chiếm | API instance cũ chưa tắt | `lsof -i :5148` rồi `kill <PID>` |
 
 ---
 

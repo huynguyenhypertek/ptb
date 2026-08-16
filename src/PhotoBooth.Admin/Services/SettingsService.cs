@@ -11,6 +11,11 @@ public class AppSettings
     public string AppsScriptUrl { get; set; } = "";
     public bool EnablePrinting { get; set; } = false;
     public string PrinterName { get; set; } = "";
+    /// <summary>
+    /// Khổ giấy CUPS (PPD PageSize). DNP DS-RX1/RX1HS khổ 10x15cm = "300dnp6x4".
+    /// Bỏ trống = dùng khổ mặc định của driver (DNP mặc định là 310dnp6x8, KHÔNG phải 6x4).
+    /// </summary>
+    public string PrintMedia { get; set; } = "300dnp6x4";
     public int CountdownSeconds { get; set; } = 3;
     public string EventName { get; set; } = "DONGFEST";
 }

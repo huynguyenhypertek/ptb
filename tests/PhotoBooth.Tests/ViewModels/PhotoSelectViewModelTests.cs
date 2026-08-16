@@ -27,10 +27,12 @@ public class PhotoSelectViewModelTests
         public event EventHandler<byte[]>? FrameReady;
         public event EventHandler? CameraError;
         public bool IsRunning => false;
+        public bool IsInitialized => false;
         public bool Initialize(int deviceIndex = 0) => false;
+        public void Deinitialize() { }
         public void StartPreview() { }
         public void StopPreview() { }
-        public string CapturePhoto(string outputDir) => string.Empty;
+        public string CapturePhoto(string outputDirectory, string? fileName = null) => string.Empty;
         public byte[]? GetCurrentFrame() => null;
         public void Dispose() { }
     }
@@ -38,7 +40,7 @@ public class PhotoSelectViewModelTests
 
     private sealed class StubPrintService : IPrintService
     {
-        public Task<bool> PrintImageAsync(string imagePath, string printerName, int copies, CancellationToken ct) => Task.FromResult(true);
+        public Task<bool> PrintImageAsync(string imagePath, string printerName, int copies, CancellationToken ct, string mediaType = "") => Task.FromResult(true);
     }
 
     private static NavigationService CreateNavService()

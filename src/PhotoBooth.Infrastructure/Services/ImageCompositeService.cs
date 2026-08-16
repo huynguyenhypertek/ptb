@@ -113,7 +113,11 @@ public static class ImageCompositeService
         if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
             Directory.CreateDirectory(dir);
 
-        Cv2.ImWrite(outputPath, canvas);
+        // A3: Verify write succeeded — nếu bỏ qua, session sẽ đi tiếp với FinalImagePath
+        // trỏ vào file không tồn tại và lỗi chỉ lộ ra ở màn hình in.
+        if (!Cv2.ImWrite(outputPath, canvas))
+            throw new IOException($"Failed to write final composite to {outputPath}");
+
         Console.WriteLine($"[COMPOSITE] Final image saved: {outputPath} ({canvasW}x{canvasH})");
 
         return outputPath;
