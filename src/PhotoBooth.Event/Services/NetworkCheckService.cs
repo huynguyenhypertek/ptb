@@ -36,8 +36,9 @@ public static class NetworkCheckService
         bool result;
         try
         {
-            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(3));
-            using var response = await HttpService.Client.GetAsync("https://www.google.com/generate_204", cts.Token);
+            // Tăng timeout lên 5s và dùng HTTP thay vì HTTPS để tránh lỗi timeout do TLS handshake trên mạng sự kiện yếu
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
+            using var response = await HttpService.Client.GetAsync("http://clients3.google.com/generate_204", cts.Token);
             result = response.IsSuccessStatusCode;
         }
         catch

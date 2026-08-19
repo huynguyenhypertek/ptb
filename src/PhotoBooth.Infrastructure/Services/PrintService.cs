@@ -75,15 +75,45 @@ public class PrintService : IPrintService
         if (!await PreflightCheckAsync(printerName, mediaType, ct))
             return false;
 
+        var finalImagePath = imagePath;
+        var tempPdfPath = string.Empty;
+
+        // Lỗi kinh điển của driver DNP trên macOS: in file JPG/PNG trực tiếp qua CUPS hay bị
+        // sai không gian màu (RGB -> BGR) làm ảnh bị xanh hoặc xỉn màu. Convert qua PDF trước 
+        // bằng `sips` sẽ giữ nguyên profile màu chuẩn xác.
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) &&
+            (imagePath.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+             imagePath.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
+             imagePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase)))
+        {
+            tempPdfPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"print_{Guid.NewGuid():N}.pdf");
+            var (sipsCode, _, sipsErr) = await RunAsync("sips", $"-s format pdf \"{imagePath}\" --out \"{tempPdfPath}\"", ct);
+            if (sipsCode == 0 && System.IO.File.Exists(tempPdfPath))
+            {
+                finalImagePath = tempPdfPath;
+                Console.WriteLine($"[PRINT] Converted image to PDF for accurate color printing on macOS: {tempPdfPath}");
+            }
+            else
+            {
+                Console.WriteLine($"[PRINT] WARNING: Failed to convert image to PDF via sips: {sipsErr}");
+            }
+        }
+
         var options = "-o fit-to-page";
         if (!string.IsNullOrWhiteSpace(mediaType))
             options += $" -o media={mediaType}";
 
         var args = string.IsNullOrWhiteSpace(printerName)
-            ? $"-n {copies} {options} \"{imagePath}\""
-            : $"-n {copies} -d \"{printerName}\" {options} \"{imagePath}\"";
+            ? $"-n {copies} {options} \"{finalImagePath}\""
+            : $"-n {copies} -d \"{printerName}\" {options} \"{finalImagePath}\"";
 
         var (exitCode, stdout, stderr) = await RunAsync("lp", args, ct);
+
+        // Dọn dẹp file PDF tạm
+        if (!string.IsNullOrEmpty(tempPdfPath) && System.IO.File.Exists(tempPdfPath))
+        {
+            try { System.IO.File.Delete(tempPdfPath); } catch { /* ignore */ }
+        }
 
         if (exitCode != 0)
         {
