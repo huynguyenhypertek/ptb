@@ -57,14 +57,14 @@
                       GridLinesVisibility="Horizontal"
                       BorderThickness="0">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="50"/>
-                    <DataGridTextColumn Header="Thiết bị" Binding="{Binding DeviceId}" Width="110"/>
-                    <DataGridTextColumn Header="Layout" Binding="{Binding LayoutUsed}" Width="90"/>
-                    <DataGridTextColumn Header="Khung" Binding="{Binding FrameUsed}" Width="100"/>
-                    <DataGridTextColumn Header="Ảnh chọn" Binding="{Binding PhotoCount}" Width="80"/>
-                    <DataGridTextColumn Header="Tổng chụp" Binding="{Binding TotalCaptured}" Width="90"/>
-                    <DataGridTextColumn Header="💰 Số tiền" Binding="{Binding AmountFormatted}" Width="110"/>
-                    <DataGridTextColumn Header="Thời gian" Binding="{Binding CreatedAtFormatted}" Width="*"/>
+                    <DataGridTextColumn Header="ID" Binding="{Binding Id, Mode=OneWay}" Width="50"/>
+                    <DataGridTextColumn Header="Thiết bị" Binding="{Binding DeviceId, Mode=OneWay}" Width="110"/>
+                    <DataGridTextColumn Header="Layout" Binding="{Binding LayoutUsed, Mode=OneWay}" Width="90"/>
+                    <DataGridTextColumn Header="Khung" Binding="{Binding FrameUsed, Mode=OneWay}" Width="100"/>
+                    <DataGridTextColumn Header="Ảnh chọn" Binding="{Binding PhotoCount, Mode=OneWay}" Width="80"/>
+                    <DataGridTextColumn Header="Tổng chụp" Binding="{Binding TotalCaptured, Mode=OneWay}" Width="90"/>
+                    <DataGridTextColumn Header="💰 Số tiền" Binding="{Binding AmountFormatted, Mode=OneWay}" Width="110"/>
+                    <DataGridTextColumn Header="Thời gian" Binding="{Binding CreatedAtFormatted, Mode=OneWay}" Width="*"/>
                 </DataGrid.Columns>
             </DataGrid>
         </Border>

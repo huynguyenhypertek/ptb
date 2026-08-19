@@ -311,7 +311,7 @@ source ~/.bash_profile
 dotnet run --project src/PhotoBooth.API
 
 # Terminal 2: Chạy Admin (đăng nhập rồi khởi động Event/UI app từ giao diện)
-dotnet run --project src/PhotoBooth.Admin
+    dotnet run --project src/PhotoBooth.Admin
 ```
 
 #### Cách B: Build app bundle (production)
