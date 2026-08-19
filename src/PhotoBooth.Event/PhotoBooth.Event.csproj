@@ -22,9 +22,12 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageReference Include="OpenCvSharp4.runtime.osx.x64" Version="4.13.0.20260627" />
     <PackageReference Include="QRCoder" Version="1.6.0" />
-    <PackageReference Include="OpenCvSharp4.runtime.osx_arm64" Version="4.8.1-rc" />
+    <!-- Runtime native libs must match OpenCvSharp4 managed version (see PhotoBooth.Infrastructure.csproj) -->
+    <!-- Intel Mac (x64) -->
+    <PackageReference Include="OpenCvSharp4.runtime.osx.x64" Version="4.13.0.20260627" Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'X64'" />
+    <!-- Apple Silicon Mac (arm64) -->
+    <PackageReference Include="OpenCvSharp4.runtime.osx.arm64" Version="4.13.0.20260627" Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.94.2" />
   </ItemGroup>
 
@@ -36,4 +39,24 @@
     <ProjectReference Include="..\PhotoBooth.Core\PhotoBooth.Core.csproj" />
     <ProjectReference Include="..\PhotoBooth.Infrastructure\PhotoBooth.Infrastructure.csproj" />
   </ItemGroup>
+
+  <!--
+    Fix for macOS: 'dotnet run' does not auto-load native libs from runtimes/ subfolders.
+    This copies the correct libOpenCvSharpExtern.dylib to the build output root.
+    Works on both Intel x64 and Apple Silicon (arm64) Macs.
+  -->
+  <Target Name="CopyOpenCvNativeLibToOutput" AfterTargets="Build" Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+    <PropertyGroup>
+      <_OsxArch>$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)</_OsxArch>
+      <_OpenCvRid Condition="'$(_OsxArch)' == 'X64'">osx-x64</_OpenCvRid>
+      <_OpenCvRid Condition="'$(_OsxArch)' == 'Arm64'">osx-arm64</_OpenCvRid>
+    </PropertyGroup>
+    <ItemGroup>
+      <_OpenCvDylib Include="$(OutputPath)runtimes/$(_OpenCvRid)/native/libOpenCvSharpExtern.dylib" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_OpenCvDylib)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" Condition="Exists('@(_OpenCvDylib)')" />
+    <Message Text="[OpenCV] ✅ Copied libOpenCvSharpExtern.dylib (rid=$(_OpenCvRid)) → $(OutputPath)" Importance="high" Condition="Exists('@(_OpenCvDylib)')" />
+    <Warning Text="[OpenCV] ❌ runtimes/$(_OpenCvRid)/native/libOpenCvSharpExtern.dylib not found in $(OutputPath). Camera may fail." Condition="!Exists('@(_OpenCvDylib)')" />
+  </Target>
+
 </Project>

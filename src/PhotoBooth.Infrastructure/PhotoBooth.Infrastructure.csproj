@@ -1,11 +1,16 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\PhotoBooth.Core\PhotoBooth.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenCvSharp4" Version="4.11.0.20250507" />
+    <PackageReference Include="OpenCvSharp4" Version="4.13.0.20260627" />
+    <!-- Runtime native libs must match the OpenCvSharp4 managed version above (ABI mismatch causes native crashes) -->
+    <!-- Intel Mac (x64) -->
+    <PackageReference Include="OpenCvSharp4.runtime.osx.x64" Version="4.13.0.20260627" Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'X64'" />
+    <!-- Apple Silicon Mac (arm64) -->
+    <PackageReference Include="OpenCvSharp4.runtime.osx.arm64" Version="4.13.0.20260627" Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -13,5 +18,30 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <!--
+    On macOS, 'dotnet run' (debug mode) does not load native libs from
+    runtimes/osx-x64/native/ subfolders automatically.
+    This target copies libOpenCvSharpExtern.dylib to the build output root
+    of the consuming app project, using NUGET_PACKAGES env or default ~/.nuget path.
+  -->
+  <Target Name="CopyOpenCvNativeLib" AfterTargets="Build" Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+    <PropertyGroup>
+      <_OsxArch>$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)</_OsxArch>
+      <_NugetHome Condition="'$(NUGET_PACKAGES)' != ''">$(NUGET_PACKAGES)</_NugetHome>
+      <_NugetHome Condition="'$(NUGET_PACKAGES)' == ''">$(USERPROFILE)/.nuget/packages</_NugetHome>
+      <!-- macOS HOME fallback -->
+      <_NugetHome Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'True' And '$(NUGET_PACKAGES)' == ''">$(HOME)/.nuget/packages</_NugetHome>
+      <_OpenCvRid Condition="'$(_OsxArch)' == 'X64'">osx-x64</_OpenCvRid>
+      <_OpenCvRid Condition="'$(_OsxArch)' == 'Arm64'">osx-arm64</_OpenCvRid>
+    </PropertyGroup>
+    <!-- Find the dylib from any installed version of the runtime package -->
+    <ItemGroup>
+      <_OpenCvDylibs Include="$(_NugetHome)/opencvsharp4.runtime.$(_OpenCvRid)/*/runtimes/$(_OpenCvRid)/native/libOpenCvSharpExtern.dylib" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_OpenCvDylibs)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" Condition="'@(_OpenCvDylibs)' != ''" />
+    <Message Text="[OpenCV] Copied @(_OpenCvDylibs->'%(Filename)%(Extension)') → $(OutputPath)" Importance="high" Condition="'@(_OpenCvDylibs)' != ''" />
+    <Warning Text="[OpenCV] libOpenCvSharpExtern.dylib not found in NuGet cache for rid=$(_OpenCvRid). Camera will not work." Condition="'@(_OpenCvDylibs)' == ''" />
+  </Target>
 
 </Project>

@@ -1,0 +1,3 @@
+/Users/mac/.gemini/antigravity-ide/scratch/ptb/src/PhotoBooth.Infrastructure/PhotoBooth.Infrastructure.csproj(44,5): warning : [OpenCV] libOpenCvSharpExtern.dylib not found in NuGet cache for rid=osx-x64. Camera will not work.
+[CONFIG] StoreId=, DeviceId=admin, PlanType=Pro, ApiBaseUrl=http://localhost:5148, GoogleDriveEnabled=True, GoogleDrivePath=, AppsScriptUrl=, EnablePrinting=False, PrinterName=, PrintMedia=, CountdownSeconds=3, EventName=DONGFEST, QrCodeSizePercent=10
+[CLEANUP] No stale sessions found (checked 17 dir(s))

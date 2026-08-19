@@ -19,6 +19,18 @@ public class CameraService : ICameraService
     private CancellationTokenSource? _previewCts;
     private Task? _previewTask;
     private readonly object _lock = new();
+
+    /// <summary>
+    /// OpenCV's JPEG codec relies on libjpeg's setjmp/longjmp error handling,
+    /// which is not reentrant/thread-safe. StartPreview()'s background loop
+    /// (frame.ToBytes) and CapturePhoto() (Cv2.ImWrite) run on different
+    /// ThreadPool threads and can call into the JPEG codec at the same time.
+    /// If both hit an error path simultaneously, one thread's longjmp can land
+    /// on the other's jmp_buf and segfault the whole process (native SIGSEGV,
+    /// unrecoverable by managed try/catch). Serialize every JPEG encode/decode
+    /// call through this lock to eliminate the race.
+    /// </summary>
+    private readonly object _jpegLock = new();
     
     public bool IsRunning => _isRunning;
     public bool IsInitialized => _capture != null && _capture.IsOpened();
@@ -35,29 +47,148 @@ public class CameraService : ICameraService
         {
             lock (_lock)
             {
-                _capture?.Dispose();
-                _capture = new VideoCapture(deviceIndex);
-                
-                if (!_capture.IsOpened())
+                // Use Release() instead of Dispose() to avoid SIGSEGV crash
+                // on some cameras (e.g. Sony ZV-E10) where AVFoundation's native
+                // cleanup triggers a segfault.
+                try { _capture?.Release(); } catch (Exception ex) { Console.WriteLine($"[CAMERA] Release error (non-fatal): {ex.Message}"); }
+                _capture = null;
+
+                // On macOS (both Intel x64 and Apple Silicon M1/M2/M3),
+                // OpenCV requires AVFoundation backend to detect built-in
+                // FaceTime cameras and most USB/HDMI capture cards.
+                // We try AVFoundation first, then fall back to the default backend.
+                // Use integer values directly to ensure compatibility across OpenCvSharp4 versions:
+                // 1200 = CAP_AVFOUNDATION (macOS native, works on both Intel x64 and Apple Silicon)
+                //   0 = CAP_ANY (let OpenCV auto-detect, cross-platform fallback)
+                var backendsToTry = new (VideoCaptureAPIs api, string name)[]
                 {
-                    Console.WriteLine($"Failed to open camera at index {deviceIndex}");
+                    ((VideoCaptureAPIs)1200, "AVFoundation (macOS)"),
+                    ((VideoCaptureAPIs)0,    "Default"),
+                };
+
+                foreach (var (api, name) in backendsToTry)
+                {
+                    Console.WriteLine($"[CAMERA] Trying backend: {name} (index={deviceIndex})");
+                    try
+                    {
+                        var cap = new VideoCapture(deviceIndex, api);
+                        if (cap.IsOpened())
+                        {
+                            _capture = cap;
+                            Console.WriteLine($"[CAMERA] Opened with backend: {name}");
+                            break;
+                        }
+                        cap.Dispose();
+                        Console.WriteLine($"[CAMERA] Backend {name} could not open camera at index {deviceIndex}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[CAMERA] Backend {name} threw: {ex.Message}");
+                    }
+                }
+
+                if (_capture == null || !_capture.IsOpened())
+                {
+                    Console.WriteLine($"[CAMERA] Failed to open camera at index {deviceIndex} with any backend");
                     return false;
                 }
-                
-                // Set camera properties - use lower resolution for preview to reduce CPU
-                _capture.Set(VideoCaptureProperties.FrameWidth, 1920);
-                _capture.Set(VideoCaptureProperties.FrameHeight, 1080);
-                _capture.Set(VideoCaptureProperties.Fps, 30);
-                
-                Console.WriteLine($"Camera initialized: {_capture.FrameWidth}x{_capture.FrameHeight}");
-                return true;
             }
+
+            // AVFoundation opens the capture session (indicator light turns on,
+            // IsOpened()==true) as soon as the session object is created, regardless
+            // of whether the requested resolution/FPS is actually supported by the
+            // device — an unsupported mode silently produces zero frames instead of
+            // failing outright. Try progressively safer resolutions and verify with a
+            // real frame read after each, so a device that only supports e.g.
+            // 1280x720 (common on some Intel Mac built-in/USB webcams) still works
+            // even if a different machine's camera happens to support 1920x1080.
+            var resolutionsToTry = new (int width, int height, string label)[]
+            {
+                (1920, 1080, "1920x1080@30"),
+                (1280, 720, "1280x720@30"),
+                (0, 0, "device default"), // don't call Set() at all — let the device pick
+            };
+
+            foreach (var (width, height, label) in resolutionsToTry)
+            {
+                lock (_lock)
+                {
+                    if (_capture == null) break;
+                    if (width > 0)
+                    {
+                        _capture.Set(VideoCaptureProperties.FrameWidth, width);
+                        _capture.Set(VideoCaptureProperties.FrameHeight, height);
+                        _capture.Set(VideoCaptureProperties.Fps, 30);
+                    }
+                    Console.WriteLine($"[CAMERA] Trying resolution: {label} (reported: {_capture.FrameWidth}x{_capture.FrameHeight})");
+                }
+
+                if (_capture == null) break;
+
+                if (WarmUpAndVerifyFrame())
+                {
+                    Console.WriteLine($"[CAMERA] Initialized and verified frame delivery at {label}");
+                    return true;
+                }
+
+                Console.WriteLine($"[CAMERA] No frame delivered at {label}, trying next resolution");
+
+                if (_capture == null)
+                {
+                    // WarmUpAndVerifyFrame's underlying TryReadFrame detected a genuine
+                    // hang/timeout and already disposed the capture — device is
+                    // unusable, not just a resolution mismatch. Stop trying further
+                    // resolutions.
+                    break;
+                }
+            }
+
+            Console.WriteLine($"[CAMERA] Device {deviceIndex} opened but never delivered a frame at any resolution — treating as failed");
+            lock (_lock)
+            {
+                _capture?.Dispose();
+                _capture = null;
+            }
+            return false;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error initializing camera: {ex.Message}");
+            Console.WriteLine($"[CAMERA] Error initializing camera: {ex.Message}");
             return false;
         }
+    }
+
+    /// <summary>
+    /// AVFoundation's IsOpened()==true does not guarantee the capture session has
+    /// begun delivering sample buffers — that can take up to a few seconds after
+    /// open, especially on cold start. Without this check, StartPreview() would
+    /// declare "camera ready" immediately, then silently die a few seconds later
+    /// when its consecutive-read-failure threshold is hit, leaving the UI stuck
+    /// showing a blank preview forever (camera light on, nothing on screen). Poll
+    /// for a real, non-empty frame before declaring initialization successful.
+    /// </summary>
+    private bool WarmUpAndVerifyFrame()
+    {
+        using var frame = new Mat();
+        const int warmUpAttempts = 5;
+        const int warmUpDelayMs = 300;
+
+        for (int i = 0; i < warmUpAttempts; i++)
+        {
+            if (TryReadFrame(frame, CancellationToken.None) && !frame.Empty())
+            {
+                Console.WriteLine($"[CAMERA] Warm-up: got first frame on attempt {i + 1}/{warmUpAttempts}");
+                return true;
+            }
+
+            // TryReadFrame disposes _capture after a genuine hang/timeout (not just
+            // a "no frame yet" false return) — no point retrying if that happened.
+            if (_capture == null) break;
+
+            Thread.Sleep(warmUpDelayMs);
+        }
+
+        return false;
     }
 
     public void Deinitialize()
@@ -70,12 +201,14 @@ public class CameraService : ICameraService
             StopPreview();
         }
 
-        lock (_lock)
-        {
-            _capture?.Dispose();
-            _capture = null;
-        }
-        Console.WriteLine("[CAMERA] Deinitialized hardware handle.");
+        // IMPORTANT: Do NOT dispose or release _capture here.
+        // On macOS, VideoCapture.Dispose()/Release() with AVFoundation backend
+        // can trigger a SIGSEGV in native code on certain cameras (Sony ZV-E10,
+        // some HDMI capture cards). Since CameraService is a singleton, the
+        // capture handle is preserved and reused by the next session's
+        // Initialize() call (which checks IsInitialized first and skips
+        // re-creation). The handle is only cleaned up at app shutdown via Dispose().
+        Console.WriteLine("[CAMERA] Deinitialized (preview stopped, capture handle preserved).");
     }
 
     /// <summary>
@@ -121,6 +254,54 @@ public class CameraService : ICameraService
         catch (Exception ex)
         {
             Console.WriteLine($"[CAMERA] TryReadFrame error: {ex.Message}");
+            return false;
+        }
+    }
+
+    private bool _loggedFrameFormat;
+
+    /// <summary>
+    /// libjpeg (used internally by OpenCV's JPEG encoder) only supports 8-bit
+    /// depth and 1 or 3 channel images. Some UVC/HDMI capture devices (and
+    /// certain camera USB-streaming modes) hand back 16-bit or 4-channel (BGRA)
+    /// frames instead. Encoding those directly corrupts libjpeg's internal
+    /// state and crashes the process inside its longjmp-based error handler
+    /// (native SIGSEGV that a managed try/catch cannot stop). Normalize the
+    /// frame to something libjpeg can safely encode before it ever reaches
+    /// ToBytes/ImWrite.
+    /// </summary>
+    private bool TryPrepareForEncode(Mat frame)
+    {
+        try
+        {
+            if (frame.Empty()) return false;
+
+            if (!_loggedFrameFormat)
+            {
+                _loggedFrameFormat = true;
+                Console.WriteLine($"[CAMERA] First frame format: {frame.Width}x{frame.Height}, channels={frame.Channels()}, depth={frame.Depth()}, type={frame.Type()}");
+            }
+
+            if (frame.Depth() != MatType.CV_8U)
+            {
+                frame.ConvertTo(frame, MatType.CV_8U);
+            }
+
+            if (frame.Channels() == 4)
+            {
+                Cv2.CvtColor(frame, frame, ColorConversionCodes.BGRA2BGR);
+            }
+            else if (frame.Channels() != 1 && frame.Channels() != 3)
+            {
+                Console.WriteLine($"[CAMERA] Unsupported channel count ({frame.Channels()}), skipping frame");
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CAMERA] Frame normalization failed: {ex.Message}");
             return false;
         }
     }
@@ -171,15 +352,21 @@ public class CameraService : ICameraService
                     {
                         bool frameRead = TryReadFrame(frame, _previewCts.Token);
                         
-                        if (frameRead && !frame.Empty())
+                        if (frameRead && TryPrepareForEncode(frame))
                         {
                             consecutiveErrors = 0; // Reset khi thành công
-                            
-                            // Mirror horizontally for selfie view
-                            Cv2.Flip(frame, frame, FlipMode.Y);
-                            
-                            // Convert to JPEG bytes for display
-                            var bytes = frame.ToBytes(".jpg", new ImageEncodingParam(ImwriteFlags.JpegQuality, 70));
+
+                            byte[] bytes;
+                            lock (_jpegLock)
+                            {
+                                // Mirror horizontally for selfie view
+                                Cv2.Flip(frame, frame, FlipMode.Y);
+
+                                // Convert to PNG (compression=1 for speed) for display.
+                                // Avoids libjpeg crash (SIGSEGV) and much smaller than BMP
+                                // (~500KB vs 2.7MB per frame → less GC pressure).
+                                bytes = frame.ToBytes(".png", new ImageEncodingParam(ImwriteFlags.PngCompression, 1));
+                            }
                             FrameReady?.Invoke(this, bytes);
                         }
                         else
@@ -262,47 +449,55 @@ public class CameraService : ICameraService
         
         using var frame = new Mat();
         bool frameRead = TryReadFrame(frame, CancellationToken.None);
-        
-        if (frameRead && !frame.Empty())
+
+        if (frameRead && TryPrepareForEncode(frame))
         {
-            // Mirror horizontally for selfie view
-            Cv2.Flip(frame, frame, FlipMode.Y);
-            
-            // Crop to match the on-screen preview aspect ratio (1050:800 = 21:16)
-            // This ensures the saved photo matches exactly what the user sees
-            double targetAspect = 1050.0 / 800.0; // 1.3125
-            int frameW = frame.Width;
-            int frameH = frame.Height;
-            double frameAspect = (double)frameW / frameH;
-            
-            int cropX = 0, cropY = 0, cropW = frameW, cropH = frameH;
-            
-            if (frameAspect > targetAspect)
+            lock (_jpegLock)
             {
-                // Frame is wider than target → crop sides
-                cropW = (int)(frameH * targetAspect);
-                cropX = (frameW - cropW) / 2;
+                // Mirror horizontally for selfie view
+                Cv2.Flip(frame, frame, FlipMode.Y);
+
+                // Crop to match the on-screen preview aspect ratio (1050:800 = 21:16)
+                // This ensures the saved photo matches exactly what the user sees
+                double targetAspect = 1050.0 / 800.0; // 1.3125
+                int frameW = frame.Width;
+                int frameH = frame.Height;
+                double frameAspect = (double)frameW / frameH;
+
+                int cropX = 0, cropY = 0, cropW = frameW, cropH = frameH;
+
+                if (frameAspect > targetAspect)
+                {
+                    // Frame is wider than target → crop sides
+                    cropW = (int)(frameH * targetAspect);
+                    cropX = (frameW - cropW) / 2;
+                }
+                else if (frameAspect < targetAspect)
+                {
+                    // Frame is taller than target → crop top/bottom
+                    cropH = (int)(frameW / targetAspect);
+                    cropY = (frameH - cropH) / 2;
+                }
+
+                using var cropped = new Mat(frame, new Rect(cropX, cropY, cropW, cropH));
+
+                var finalFileName = string.IsNullOrWhiteSpace(fileName)
+                    ? $"photo_{DateTime.Now:yyyyMMdd_HHmmss_fff}.png"
+                    : fileName;
+
+                if (finalFileName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase))
+                {
+                    finalFileName = finalFileName.Substring(0, finalFileName.Length - 4) + ".png";
+                }
+
+                var path = Path.Combine(outputDirectory, finalFileName);
+
+                // Save PNG to avoid libjpeg crash
+                Cv2.ImWrite(path, cropped, new ImageEncodingParam(ImwriteFlags.PngCompression, 3));
+
+                Console.WriteLine($"Photo saved: {path} ({cropW}x{cropH} cropped from {frameW}x{frameH})");
+                return path;
             }
-            else if (frameAspect < targetAspect)
-            {
-                // Frame is taller than target → crop top/bottom
-                cropH = (int)(frameW / targetAspect);
-                cropY = (frameH - cropH) / 2;
-            }
-            
-            using var cropped = new Mat(frame, new Rect(cropX, cropY, cropW, cropH));
-            
-            var finalFileName = string.IsNullOrWhiteSpace(fileName) 
-                ? $"photo_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg" 
-                : fileName;
-                
-            var path = Path.Combine(outputDirectory, finalFileName);
-            
-            // Save high quality JPEG
-            Cv2.ImWrite(path, cropped, new ImageEncodingParam(ImwriteFlags.JpegQuality, 95));
-            
-            Console.WriteLine($"Photo saved: {path} ({cropW}x{cropH} cropped from {frameW}x{frameH})");
-            return path;
         }
         
         throw new Exception("Failed to capture frame");
@@ -318,12 +513,12 @@ public class CameraService : ICameraService
         
         using var frame = new Mat();
         bool frameRead = TryReadFrame(frame, CancellationToken.None);
-        
-        if (frameRead && !frame.Empty())
+
+        if (frameRead && TryPrepareForEncode(frame))
         {
-            return frame.ToBytes(".jpg");
+            return frame.ToBytes(".png", new ImageEncodingParam(ImwriteFlags.PngCompression, 1));
         }
-        
+
         return null;
     }
 
@@ -338,7 +533,16 @@ public class CameraService : ICameraService
         
         lock (_lock)
         {
-            _capture?.Dispose();
+            // Wrap in try-catch: AVFoundation VideoCapture cleanup can SIGSEGV
+            // on some camera hardware. At app shutdown this is acceptable.
+            try
+            {
+                _capture?.Release();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[CAMERA] Dispose release error: {ex.Message}");
+            }
             _capture = null;
         }
         

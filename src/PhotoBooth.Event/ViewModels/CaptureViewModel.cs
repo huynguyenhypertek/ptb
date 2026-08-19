@@ -145,7 +145,11 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
                     if (!_eventSubscribed)
                     {
                         _cameraService.FrameReady += OnFrameReady;
-                        // NOTE: Do NOT subscribe CameraError — no reconnect logic in Event
+                        // Event has no reconnect logic, but the preview loop can still die
+                        // mid-session (e.g. camera physically disconnected). Surface that to
+                        // the user instead of leaving IsCameraReady=true with a frozen
+                        // preview and no explanation.
+                        _cameraService.CameraError += OnCameraError;
                         _eventSubscribed = true;
                     }
 
@@ -228,6 +232,25 @@ public partial class CaptureViewModel : ViewModelBase, IDisposable
             Console.WriteLine($"Frame display error: {ex.Message}");
             _isRenderingFrame = false;
         }
+    }
+
+    /// <summary>
+    /// Raised by CameraService when the preview loop dies (e.g. camera
+    /// disconnected mid-session, or read failures exceed the retry threshold).
+    /// Event has no reconnect logic, but at minimum the user must be told the
+    /// preview is dead instead of staring at a frozen/blank image with
+    /// IsCameraReady still showing true.
+    /// </summary>
+    private void OnCameraError(object? sender, EventArgs e)
+    {
+        if (_disposed) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_disposed) return;
+            IsCameraReady = false;
+            StatusMessage = "Camera connection lost. Please restart the app.";
+        });
     }
 
     /// <summary>

@@ -17,7 +17,9 @@ Hệ thống Photo Booth tự phục vụ — chụp ảnh, chọn khung, in ả
 │       (Camera, In ấn, Xử lý ảnh)   │                   │
 ├─────────────────────────────────────┤                   │
 │           PhotoBooth.Core           │                   │
-│     (Models, Interfaces chung)      │                   │
+│     (Models, Interfaces chung)      │
+
+                   │
 └─────────────────────────────────────┴───────────────────┘
 ```
 
@@ -301,6 +303,8 @@ cd ../..
 ### Bước 3: Chạy hệ thống
 
 #### Cách A: Chạy từ source (dev mode)
+
+source ~/.bash_profile
 
 ```bash
 # Terminal 1: Chạy API (tự tạo DB + tài khoản mặc định)

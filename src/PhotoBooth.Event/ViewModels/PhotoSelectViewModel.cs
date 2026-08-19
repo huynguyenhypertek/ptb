@@ -201,7 +201,7 @@ public partial class PhotoSelectViewModel : ViewModelBase, IDisposable
             // Use the correct SessionDirectory from the session
             string sessionDir = _sessionService.CurrentSession.SessionDirectory ?? Path.GetTempPath();
             string sessionName = _sessionService.CurrentSession.SessionFolderName ?? "unknown";
-            string customFinalName = $"{DeviceConfig.EventName}_{sessionName}_final.jpg";
+            string customFinalName = $"{DeviceConfig.EventName}_{sessionName}_final.png";
             string outputPath = Path.Combine(sessionDir, customFinalName);
 
             bool isTestMode = Avalonia.Application.Current == null;

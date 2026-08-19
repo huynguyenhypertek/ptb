@@ -15,15 +15,20 @@ public static class CameraServiceExtensions
     {
         if (cameraService.IsInitialized) return true;
 
-        // Strategy: Try device 0 first (default)
-        bool success = cameraService.Initialize(0);
-        
-        // Strategy: Fallback to device 1 if device 0 fails
-        if (!success)
+        // Try a few device indices in order. CameraService.Initialize() now
+        // verifies an actual frame can be read before reporting success, so a
+        // device that opens (light on) but never streams — e.g. a virtual/
+        // placeholder camera device enumerated ahead of the real one — is
+        // rejected here and we fall through to the next index instead of
+        // getting stuck on a camera that never delivers a preview.
+        for (int deviceIndex = 0; deviceIndex <= 2; deviceIndex++)
         {
-            success = cameraService.Initialize(1);
+            if (cameraService.Initialize(deviceIndex))
+            {
+                return true;
+            }
         }
-        
-        return success;
+
+        return false;
     }
 }
