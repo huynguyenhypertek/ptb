@@ -37,7 +37,8 @@
     </PropertyGroup>
     <!-- Find the dylib from any installed version of the runtime package -->
     <ItemGroup>
-      <_OpenCvDylibs Include="$(_NugetHome)/opencvsharp4.runtime.$(_OpenCvRid)/*/runtimes/$(_OpenCvRid)/native/libOpenCvSharpExtern.dylib" />
+      <_OpenCvDylibs Include="$(_NugetHome)/opencvsharp4.runtime.osx*/$(_OpenCvRid)*/runtimes/$(_OpenCvRid)/native/libOpenCvSharpExtern.dylib" />
+      <_OpenCvDylibs Include="$(_NugetHome)/opencvsharp4.runtime.*/4.*/runtimes/$(_OpenCvRid)/native/libOpenCvSharpExtern.dylib" />
     </ItemGroup>
     <Copy SourceFiles="@(_OpenCvDylibs)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" Condition="'@(_OpenCvDylibs)' != ''" />
     <Message Text="[OpenCV] Copied @(_OpenCvDylibs->'%(Filename)%(Extension)') → $(OutputPath)" Importance="high" Condition="'@(_OpenCvDylibs)' != ''" />

@@ -354,18 +354,16 @@ public class CameraService : ICameraService
                         
                         if (frameRead && TryPrepareForEncode(frame))
                         {
-                            consecutiveErrors = 0; // Reset khi thành công
-
+                            consecutiveErrors = 0;
                             byte[] bytes;
                             lock (_jpegLock)
                             {
                                 // Mirror horizontally for selfie view
                                 Cv2.Flip(frame, frame, FlipMode.Y);
-
-                                // Convert to PNG (compression=1 for speed) for display.
-                                // Avoids libjpeg crash (SIGSEGV) and much smaller than BMP
-                                // (~500KB vs 2.7MB per frame → less GC pressure).
-                                bytes = frame.ToBytes(".png", new ImageEncodingParam(ImwriteFlags.PngCompression, 1));
+                                
+                                // Convert to JPG (quality=70) for fast display.
+                                // The libjpeg SIGSEGV crash is avoided by the _jpegLock above.
+                                bytes = frame.ToBytes(".jpg", new ImageEncodingParam(ImwriteFlags.JpegQuality, 70));
                             }
                             FrameReady?.Invoke(this, bytes);
                         }
@@ -482,18 +480,16 @@ public class CameraService : ICameraService
                 using var cropped = new Mat(frame, new Rect(cropX, cropY, cropW, cropH));
 
                 var finalFileName = string.IsNullOrWhiteSpace(fileName)
-                    ? $"photo_{DateTime.Now:yyyyMMdd_HHmmss_fff}.png"
+                    ? $"photo_{DateTime.Now:yyyyMMdd_HHmmss_fff}.jpg"
                     : fileName;
-
-                if (finalFileName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase))
-                {
-                    finalFileName = finalFileName.Substring(0, finalFileName.Length - 4) + ".png";
-                }
 
                 var path = Path.Combine(outputDirectory, finalFileName);
 
-                // Save PNG to avoid libjpeg crash
-                Cv2.ImWrite(path, cropped, new ImageEncodingParam(ImwriteFlags.PngCompression, 3));
+                // Save JPG (fast). The libjpeg crash is prevented by _jpegLock
+                lock (_jpegLock)
+                {
+                    Cv2.ImWrite(path, cropped, new ImageEncodingParam(ImwriteFlags.JpegQuality, 95));
+                }
 
                 Console.WriteLine($"Photo saved: {path} ({cropW}x{cropH} cropped from {frameW}x{frameH})");
                 return path;
@@ -516,7 +512,10 @@ public class CameraService : ICameraService
 
         if (frameRead && TryPrepareForEncode(frame))
         {
-            return frame.ToBytes(".png", new ImageEncodingParam(ImwriteFlags.PngCompression, 1));
+            lock (_jpegLock)
+            {
+                return frame.ToBytes(".jpg", new ImageEncodingParam(ImwriteFlags.JpegQuality, 95));
+            }
         }
 
         return null;
