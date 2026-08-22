@@ -113,12 +113,16 @@ public static class ImageCompositeService
         if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
             Directory.CreateDirectory(dir);
 
+        // Resize final composite to 1200x1800 (standard 4x6 at 300 DPI) to reduce file size
+        using var resizedCanvas = new Mat();
+        Cv2.Resize(canvas, resizedCanvas, new OpenCvSharp.Size(1200, 1800), 0, 0, InterpolationFlags.Area);
+
         // A3: Verify write succeeded — nếu bỏ qua, session sẽ đi tiếp với FinalImagePath
         // trỏ vào file không tồn tại và lỗi chỉ lộ ra ở màn hình in.
-        if (!Cv2.ImWrite(outputPath, canvas))
+        if (!Cv2.ImWrite(outputPath, resizedCanvas))
             throw new IOException($"Failed to write final composite to {outputPath}");
 
-        Console.WriteLine($"[COMPOSITE] Final image saved: {outputPath} ({canvasW}x{canvasH})");
+        Console.WriteLine($"[COMPOSITE] Final image saved: {outputPath} (1200x1800 scaled from {canvasW}x{canvasH})");
 
         return outputPath;
     }

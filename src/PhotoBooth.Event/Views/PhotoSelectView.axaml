@@ -157,12 +157,12 @@
                      "Tiếp theo →": x=839-1054, y=910-985 (216x75) -->
 
                 <!-- Back Button -->
-                <Button Command="{Binding GoBackCommand}"
+                <!-- <Button Command="{Binding GoBackCommand}"
                         Classes="OverlayBtn"
                         HorizontalAlignment="Left"
                         VerticalAlignment="Top"
                         Margin="150,910,0,0"
-                        Width="216" Height="75"/>
+                        Width="216" Height="75"/> -->
 
                 <!-- Next/Confirm Button -->
                 <Grid HorizontalAlignment="Left"
